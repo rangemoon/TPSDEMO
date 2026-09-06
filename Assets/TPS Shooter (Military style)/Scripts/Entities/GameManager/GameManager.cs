@@ -1,9 +1,7 @@
 ﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-
 using LightDev;
-using XH;
 
 namespace TPSShooter
 {
@@ -118,12 +116,10 @@ namespace TPSShooter
             IsGamePaused = false;
             Events.GameResumed.Call();
         }
-
-        // settle: 游戏胜利或失败时调用一次
+        
         private void FinishGame(bool isWin)
         {
             IsGameFinished = true;
-            xh.api.Ad.ShowInsert("settle");
             Events.GameFinished.Call();
             Events.GameFinishedResult.Call(isWin);
         }

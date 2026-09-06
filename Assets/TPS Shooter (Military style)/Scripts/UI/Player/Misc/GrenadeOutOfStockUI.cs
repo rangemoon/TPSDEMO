@@ -3,7 +3,6 @@ using UnityEngine.UI;
 
 using LightDev;
 using LightDev.UI;
-using XH;
 
 namespace TPSShooter.UI
 {
@@ -59,16 +58,19 @@ namespace TPSShooter.UI
         {
             if (isShowingAd) return;
 
-            isShowingAd = true;
-            xh.api.Ad.ShowTrickBoxOrVideo("common_box", () => {
-                PlayerBehaviour.GetInstance().AddGrenades(
-                    PlayerBehaviour.GetInstance().grenadeSettings.grenadesPerVideo);
-                isShowingAd = false;
-                Hide();
-            }, () => {
-                isShowingAd = false;
-                Hide();
-            });
+            // isShowingAd = true;
+            // xh.api.Ad.ShowTrickBoxOrVideo("common_box", () => {
+            //     PlayerBehaviour.GetInstance().AddGrenades(
+            //         PlayerBehaviour.GetInstance().grenadeSettings.grenadesPerVideo);
+            //     isShowingAd = false;
+            //     Hide();
+            // }, () => {
+            //     isShowingAd = false;
+            //     Hide();
+            // });
+            PlayerBehaviour.GetInstance().AddGrenades(
+            PlayerBehaviour.GetInstance().grenadeSettings.grenadesPerVideo);
+            Hide();
         }
 
         public void OnClose()

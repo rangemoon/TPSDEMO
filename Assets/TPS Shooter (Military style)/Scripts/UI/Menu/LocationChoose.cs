@@ -2,12 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-
 using LightDev;
 using LightDev.UI;
-
 using DG.Tweening;
-using XH;
 
 namespace TPSShooter.UI.Menu
 {
@@ -44,7 +41,6 @@ namespace TPSShooter.UI.Menu
             UpdateLocationInfo();
         }
 
-        // common: 切换界面时调用一次（地图选择 -> 加载游戏场景）
         public void OnPlay()
         {
             int sceneIdx = locations[locationIndex].sceneIndex;
@@ -52,17 +48,13 @@ namespace TPSShooter.UI.Menu
             {
                 return;
             }
-
-              xh.api.Ad.ShowInsert("common");
             Events.MenuClickSound.Call();
             Events.RequestMenuDownloading.Call(locations[locationIndex].sceneIndex);
             Hide();
         }
 
-        // common: 切换界面时调用一次（地图选择 -> 武器选择）
         public void OnBack()
         {
-            xh.api.Ad.ShowInsert("common");
             Events.MenuClickSound.Call();
             Events.RequestMenuWeapon.Call();
             Hide();
@@ -113,21 +105,23 @@ namespace TPSShooter.UI.Menu
             int sceneIdx = locations[locationIndex].sceneIndex;
             if (UnlockManager.IsLocationUnlocked(sceneIdx)) return;
 
-            isShowingAd = true;
-            // ** 谨慎使用 **
-            xh.api.Ad.ShowTrickBoxOrVideo(
-              "common_box",
-              () =>
-              {
-                  UnlockManager.UnlockLocation(sceneIdx);
-                  isShowingAd = false;
-                  UpdateLocationInfo();
-              },
-              () =>
-              {
-                  isShowingAd = false;
-              }
-            );
+            // isShowingAd = true;
+            // // ** 谨慎使用 **
+            // xh.api.Ad.ShowTrickBoxOrVideo(
+            //   "common_box",
+            //   () =>
+            //   {
+            //       UnlockManager.UnlockLocation(sceneIdx);
+            //       isShowingAd = false;
+            //       UpdateLocationInfo();
+            //   },
+            //   () =>
+            //   {
+            //       isShowingAd = false;
+            //   }
+            // );
+            UnlockManager.UnlockLocation(sceneIdx);
+            UpdateLocationInfo();
         }
 
         [System.Serializable]

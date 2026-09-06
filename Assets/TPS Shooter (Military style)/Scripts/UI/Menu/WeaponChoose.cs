@@ -4,8 +4,6 @@ using UnityEngine.UI;
 using LightDev;
 using LightDev.UI;
 
-using XH;
-
 namespace TPSShooter.UI.Menu
 {
     public class WeaponChoose : CanvasElement
@@ -110,21 +108,23 @@ namespace TPSShooter.UI.Menu
             string weaponTag = weapons[weaponIndex].tag;
             if (UnlockManager.IsWeaponUnlocked(weaponTag)) return;
 
-            isShowingAd = true;
-            // ** 谨慎使用 **
-            xh.api.Ad.ShowTrickBoxOrVideo(
-              "common_box",
-              () =>
-              {
-                  UnlockManager.UnlockWeapon(weaponTag);
-                  isShowingAd = false;
-                  UpdateInfo();
-              },
-              () =>
-              {
-                  isShowingAd = false;
-              }
-            );
+            // isShowingAd = true;
+            // // ** 谨慎使用 **
+            // xh.api.Ad.ShowTrickBoxOrVideo(
+            //   "common_box",
+            //   () =>
+            //   {
+            //       UnlockManager.UnlockWeapon(weaponTag);
+            //       isShowingAd = false;
+            //       UpdateInfo();
+            //   },
+            //   () =>
+            //   {
+            //       isShowingAd = false;
+            //   }
+            // );
+            UnlockManager.UnlockWeapon(weaponTag);
+            UpdateInfo();
         }
     }
 }

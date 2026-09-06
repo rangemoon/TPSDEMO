@@ -27,7 +27,9 @@ Keys
 
 # Visual Studio cache directory
 .vs/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .vsconfig
 .claude/
 

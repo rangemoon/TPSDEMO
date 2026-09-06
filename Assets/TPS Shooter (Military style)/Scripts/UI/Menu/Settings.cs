@@ -3,7 +3,6 @@ using UnityEngine.UI;
 
 using LightDev;
 using LightDev.UI;
-using XH;
 
 namespace TPSShooter.UI.Menu
 {
@@ -47,10 +46,8 @@ namespace TPSShooter.UI.Menu
             SaveLoad.TouchpadAimingSensitivity = touchpadAimingSensitivitySlider.value;
         }
 
-        // common: 切换界面时调用一次（设置 -> 主菜单）
         public void OnBack()
         {
-            xh.api.Ad.ShowInsert("common");
             Events.MenuClickSound.Call();
             Events.RequestMenu.Call();
             Hide();
