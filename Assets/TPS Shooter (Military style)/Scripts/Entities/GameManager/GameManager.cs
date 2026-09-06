@@ -120,6 +120,7 @@ namespace TPSShooter
         private void FinishGame(bool isWin)
         {
             IsGameFinished = true;
+            Time.timeScale = 0;
             Events.GameFinished.Call();
             Events.GameFinishedResult.Call(isWin);
         }

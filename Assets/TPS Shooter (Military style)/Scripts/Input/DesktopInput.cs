@@ -51,6 +51,7 @@ namespace TPSShooter
       Events.GamePaused += OnGamePaused;
       Events.GameResumed += OnGameResumed;
       Events.PlayerDied += OnPlayerDied;
+      Events.GameFinished += OnGameFinished;
     }
 
     private void OnDestroy()
@@ -58,11 +59,12 @@ namespace TPSShooter
       Events.GamePaused -= OnGamePaused;
       Events.GameResumed -= OnGameResumed;
       Events.PlayerDied -= OnPlayerDied;
+      Events.GameFinished -= OnGameFinished;
     }
 
     private void Update()
     {
-      if (GameManager.IsGamePaused)
+      if (GameManager.IsGamePaused || GameManager.IsGameFinished)
       {
         InputController.VerticalRotation = 0;
         InputController.HorizontalRotation = 0;
@@ -167,6 +169,14 @@ namespace TPSShooter
     }
 
     private void OnPlayerDied()
+    {
+      if (isCursorLocked) UnlockCursor();
+    }
+
+    /// <summary>
+    /// 游戏胜利或失败结算时解锁鼠标，方便点击结算 UI。
+    /// </summary>
+    private void OnGameFinished()
     {
       if (isCursorLocked) UnlockCursor();
     }

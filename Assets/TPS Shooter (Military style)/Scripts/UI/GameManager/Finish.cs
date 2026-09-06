@@ -58,11 +58,10 @@ namespace TPSShooter.UI
       defeatPanel.SetActive(!isWin);
       continuePanel.SetActive(false);
 
-      Invoke("HideGameOverPanel", resultShowDelay);
-
       DelayAction(resultShowDelay, () =>
       {
         if (!gameObject.activeSelf) return;
+        HideGameOverPanel();
         continuePanel.SetActive(true);
       });
     }
