@@ -31,6 +31,7 @@ namespace LightDev
     public static Event PlayerFire;
 
     public static Event PlayerDied;
+    public static Event<PlayerBehaviour> AnyPlayerDied;
 
     public static Event PlayerDetectVehicle;
     public static Event PlayerUndetectVehicle;

@@ -23,7 +23,15 @@ namespace TPSShooter.UI
 
         private void Start()
         {
-            _player = PlayerBehaviour.GetInstance();
+            TryBindPlayer();
+        }
+
+        /// <summary>
+        /// 绑定本机玩家；联机生成时本地玩家可能尚未就绪，之后每帧继续尝试直到绑定成功。
+        /// </summary>
+        private void TryBindPlayer()
+        {
+            _player = PlayerBehaviour.GetLocalPlayer();
         }
 
         public override void Subscribe()
@@ -81,6 +89,11 @@ namespace TPSShooter.UI
 
         private void Update()
         {
+            if (_player == null)
+                TryBindPlayer();
+            if (_player == null)
+                return;
+
             if (_player.IsAlive)
                 UpdateAim();
         }

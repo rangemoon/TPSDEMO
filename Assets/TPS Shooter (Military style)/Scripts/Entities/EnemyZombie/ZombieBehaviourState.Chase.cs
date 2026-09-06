@@ -48,7 +48,8 @@ namespace TPSShooter
 
       private void UpdateDestination()
       {
-        host.navmeshAgent.destination = PlayerBehaviour.GetInstance().GetPosition();
+        if (host.player != null)
+          host.navmeshAgent.destination = host.player.GetPosition();
       }
     }
   }

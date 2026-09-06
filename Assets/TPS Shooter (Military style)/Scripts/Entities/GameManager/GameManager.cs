@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using LightDev;
+using Mirror;
 
 namespace TPSShooter
 {
@@ -11,8 +12,10 @@ namespace TPSShooter
     // It can also download Menu scene and Play scene.
     public class GameManager : MonoBehaviour
     {
+        public static GameManager ActiveInstance { get; private set; }
         public static bool IsGamePaused { get; private set; }
         public static bool IsGameFinished { get; private set; }
+        public static bool IsGameWon { get; private set; }
 
         [Header("- Pool Warm Up (drag prefabs here) -")]
         public GameObject[] playerBulletPrefabs = new GameObject[0];
@@ -25,8 +28,10 @@ namespace TPSShooter
 
         private void Awake()
         {
+            ActiveInstance = this;
             IsGamePaused = false;
             IsGameFinished = false;
+            IsGameWon = false;
 
             // Pre-populate object pools to avoid first-frame hitches during combat
             WarmUpPools();
@@ -35,7 +40,7 @@ namespace TPSShooter
             Events.GameResumeRequested += OnGameResumeRequested;
             Events.GameReplayRequested += OnGameReplayRequested;
             Events.GameLoadHomeSceneRequested += OnGameLoadHomeSceneRequested;
-            Events.PlayerDied += OnPlayerDied;
+            Events.AnyPlayerDied += OnAnyPlayerDied;
             Events.GameWon += OnGameWon;
         }
 
@@ -51,16 +56,25 @@ namespace TPSShooter
 
         private void OnDestroy()
         {
+            if (ActiveInstance == this)
+                ActiveInstance = null;
+
             Events.GamePauseRequested -= OnGamePauseRequested;
             Events.GameResumeRequested -= OnGameResumeRequested;
             Events.GameReplayRequested -= OnGameReplayRequested;
             Events.GameLoadHomeSceneRequested -= OnGameLoadHomeSceneRequested;
-            Events.PlayerDied -= OnPlayerDied;
+            Events.AnyPlayerDied -= OnAnyPlayerDied;
             Events.GameWon -= OnGameWon;
         }
 
         private void OnGamePauseRequested()
         {
+            if (GameNetwork.IsClientOnly)
+            {
+                NetworkClient.Send(new GamePauseRequestMessage());
+                return;
+            }
+
             if (!IsGamePaused)
             {
                 PauseGame();
@@ -69,6 +83,12 @@ namespace TPSShooter
 
         private void OnGameResumeRequested()
         {
+            if (GameNetwork.IsClientOnly)
+            {
+                NetworkClient.Send(new GameResumeRequestMessage());
+                return;
+            }
+
             if (IsGamePaused)
             {
                 ResumeGame();
@@ -85,9 +105,14 @@ namespace TPSShooter
             LoadHomeScene();
         }
 
-        private void OnPlayerDied()
+        /// <summary>
+        /// 任意玩家死亡时检查是否全灭；仅全灭才判定失败。
+        /// </summary>
+        /// <param name="player">刚刚死亡的玩家。</param>
+        private void OnAnyPlayerDied(PlayerBehaviour player)
         {
             if (IsGameFinished) return;
+            if (PlayerRegistry.HasAlivePlayer()) return;
 
             FinishGame(false);
         }
@@ -95,6 +120,7 @@ namespace TPSShooter
         private void OnGameWon()
         {
             if (IsGameFinished) return;
+            if (GameNetwork.IsClientOnly) return;
 
             FinishGame(true);
         }
@@ -103,24 +129,77 @@ namespace TPSShooter
         {
             if (IsGameFinished) return;
 
-            Time.timeScale = 0;
-
-            IsGamePaused = true;
-            Events.GamePaused.Call();
+            ApplyPaused(true);
+            if (GameNetwork.IsServer)
+                GameNetworkManager.BroadcastSessionState();
         }
 
         private void ResumeGame()
         {
-            Time.timeScale = 1;
-
-            IsGamePaused = false;
-            Events.GameResumed.Call();
+            ApplyPaused(false);
+            if (GameNetwork.IsServer)
+                GameNetworkManager.BroadcastSessionState();
         }
         
         private void FinishGame(bool isWin)
         {
+            if (IsGameFinished) return;
+
+            ApplyFinished(isWin);
+            if (GameNetwork.IsServer)
+                GameNetworkManager.BroadcastSessionState();
+        }
+
+        /// <summary>
+        /// 应用由 Host 同步过来的暂停、结束和胜负状态。
+        /// </summary>
+        /// <param name="paused">是否暂停。</param>
+        /// <param name="finished">是否已结束。</param>
+        /// <param name="isWin">是否胜利。</param>
+        public void ApplyNetworkSessionState(bool paused, bool finished, bool isWin)
+        {
+            if (finished)
+            {
+                ApplyFinished(isWin);
+                return;
+            }
+
+            if (paused != IsGamePaused)
+                ApplyPaused(paused);
+        }
+
+        /// <summary>
+        /// 应用暂停或恢复；联机不用 Time.timeScale，避免冻住所有端的网络与动画。
+        /// </summary>
+        /// <param name="paused">true 为暂停，false 为恢复。</param>
+        private void ApplyPaused(bool paused)
+        {
+            if (IsGameFinished) return;
+            if (IsGamePaused == paused) return;
+
+            IsGamePaused = paused;
+            if (!GameNetwork.IsActive)
+                Time.timeScale = paused ? 0 : 1;
+
+            if (paused)
+                Events.GamePaused.Call();
+            else
+                Events.GameResumed.Call();
+        }
+
+        /// <summary>
+        /// 应用对局结束状态。
+        /// </summary>
+        /// <param name="isWin">是否胜利。</param>
+        private void ApplyFinished(bool isWin)
+        {
+            if (IsGameFinished) return;
+
             IsGameFinished = true;
-            Time.timeScale = 0;
+            IsGameWon = isWin;
+            if (!GameNetwork.IsActive)
+                Time.timeScale = 0;
+
             Events.GameFinished.Call();
             Events.GameFinishedResult.Call(isWin);
         }
@@ -129,6 +208,19 @@ namespace TPSShooter
         {
             Time.timeScale = 1;
             Events.GameReplay.Call();
+
+            if (GameNetwork.IsClientOnly)
+            {
+                NetworkClient.Send(new GameReplayRequestMessage());
+                return;
+            }
+
+            if (GameNetwork.IsServer)
+            {
+                GameNetworkManager.ReplayCurrentScene();
+                return;
+            }
+
             StartCoroutine(LoadScene(SceneManager.GetActiveScene().buildIndex));
         }
 
@@ -136,6 +228,19 @@ namespace TPSShooter
         {
             Time.timeScale = 1f;
             Events.GameLoadHomeScene.Call();
+
+            if (GameNetwork.IsClientOnly)
+            {
+                NetworkClient.Send(new GameLoadHomeRequestMessage());
+                return;
+            }
+
+            if (GameNetwork.IsActive)
+            {
+                GameNetworkManager.ReturnToMenu();
+                return;
+            }
+
             StartCoroutine(LoadScene(0));
         }
 

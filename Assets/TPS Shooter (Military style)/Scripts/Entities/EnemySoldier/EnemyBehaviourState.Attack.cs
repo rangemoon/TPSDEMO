@@ -79,6 +79,8 @@ namespace TPSShooter
       {
         if (!canLookAtPlayer) return lastShootPoint;
 
+        if (host.player == null) return lastShootPoint;
+
         lastShootPoint = host.player.GetPosition() + (host.player.IsCrouching ? playerCrouchOffset : playerStandOffset);
         return lastShootPoint;
       }

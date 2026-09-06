@@ -32,6 +32,9 @@ namespace TPSShooter.UI
     private void OnPlayerChangedHP()
     {
       var player = PlayerBehaviour.GetInstance();
+      if (player == null)
+        return;
+
       healthBar.fillAmount = player.GetCurrentHP() / player.GetMaxHP();
     }
   }

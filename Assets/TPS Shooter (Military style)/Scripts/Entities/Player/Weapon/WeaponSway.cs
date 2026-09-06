@@ -17,13 +17,20 @@ namespace TPSShooter
 
     private void Start()
     {
-      _playerBehaviour = PlayerBehaviour.GetInstance();
+      _playerBehaviour = GetComponentInParent<PlayerBehaviour>();
+      if (_playerBehaviour == null)
+        _playerBehaviour = PlayerBehaviour.GetLocalPlayer();
 
       _initialPosition = transform.localPosition;
     }
 
     private void LateUpdate()
     {
+      if (_playerBehaviour == null)
+        _playerBehaviour = PlayerBehaviour.GetLocalPlayer();
+      if (_playerBehaviour == null || !_playerBehaviour.IsLocalPlayer)
+        return;
+
       if (_playerBehaviour.IsAiming)
       {
         if (onceSet)

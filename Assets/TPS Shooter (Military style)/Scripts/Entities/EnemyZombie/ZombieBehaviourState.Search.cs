@@ -76,6 +76,8 @@ namespace TPSShooter
 
       private void RecalculateDestination()
       {
+        if (host.player == null) return;
+
         playerPosition = host.player.GetPosition();
         host.navmeshAgent.SetDestination(playerPosition);
       }

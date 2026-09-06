@@ -43,9 +43,11 @@ namespace TPSShooter
     public KeyCode pauseGameKeyCode = KeyCode.Escape;
 
     private bool isWeaponChoose;
+    private PlayerBehaviour ownerPlayer;
 
     private void Awake()
     {
+      ownerPlayer = transform.root.GetComponentInChildren<PlayerBehaviour>(true);
       if (isCursorLocked) LockCursor();
 
       Events.GamePaused += OnGamePaused;
@@ -64,6 +66,9 @@ namespace TPSShooter
 
     private void Update()
     {
+      if (ownerPlayer != null && (!ownerPlayer.IsLocalPlayer || !ownerPlayer.isActiveAndEnabled))
+        return;
+
       if (GameManager.IsGamePaused || GameManager.IsGameFinished)
       {
         InputController.VerticalRotation = 0;
@@ -127,7 +132,9 @@ namespace TPSShooter
       }
       if (Input.GetKeyDown(dropWeaponKeyCode))
       {
-        Events.DropWeaponRequested.Call(PlayerBehaviour.GetInstance().CurrentWeaponIndex);
+        PlayerBehaviour localPlayer = PlayerBehaviour.GetLocalPlayer();
+        if (localPlayer != null)
+          Events.DropWeaponRequested.Call(localPlayer.CurrentWeaponIndex);
       }
       if (Input.GetMouseButtonDown(1))
       {

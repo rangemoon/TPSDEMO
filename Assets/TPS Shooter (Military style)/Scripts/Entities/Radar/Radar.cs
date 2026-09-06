@@ -30,7 +30,7 @@ namespace TPSShooter.UI
 
     private void Start()
     {
-      player = PlayerBehaviour.GetInstance().transform;
+      RefreshPlayer();
     }
 
     public override void Subscribe()
@@ -51,7 +51,21 @@ namespace TPSShooter.UI
 
     private void Update()
     {
+      RefreshPlayer();
+      if (player == null)
+        return;
+
       UpdateRadarableObjectsPositions();
+    }
+
+    /// <summary>
+    /// 把雷达中心对齐到本机玩家；本机玩家尚未生成时保持为空。
+    /// </summary>
+    private void RefreshPlayer()
+    {
+      PlayerBehaviour localPlayer = PlayerBehaviour.GetLocalPlayer();
+      if (localPlayer != null)
+        player = localPlayer.transform;
     }
 
     private void UpdateRadarableObjectsPositions()

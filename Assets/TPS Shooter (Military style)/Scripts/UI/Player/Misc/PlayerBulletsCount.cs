@@ -45,6 +45,14 @@ namespace TPSShooter.UI
       Events.PlayerPickUpAmmo -= UpdateWeaponCountText;
     }
 
+    /// <summary>
+    /// 联机补显示时走 TryShow 的完整状态检查，避免徒手或开车状态下刷新子弹数空引用。
+    /// </summary>
+    public override void ShowForLateSpawn()
+    {
+      TryShow();
+    }
+
     private void TryShow()
     {
       if (PlayerBehaviour.GetInstance() == null)

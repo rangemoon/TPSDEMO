@@ -20,12 +20,41 @@ namespace TPSShooter
 
     private CharacterController _characterController;
     private Animator _animator;
-
-    private static PlayerBehaviour instance;
+    private PlayerNetwork _playerNetwork;
+    private bool _localControlEnabled;
 
     public bool IsAlive { get; private set; } = true;
     public float Noise { get { return GetNoise(); } }
-    public static PlayerBehaviour GetInstance() { return instance; }
+
+    /// <summary>
+    /// 返回本机玩家。联机时远端玩家不会成为该引用。
+    /// </summary>
+    public static PlayerBehaviour GetInstance()
+    {
+      return PlayerRegistry.GetLocalPlayer();
+    }
+
+    /// <summary>
+    /// 返回本机玩家，语义与 GetInstance 相同。
+    /// </summary>
+    public static PlayerBehaviour GetLocalPlayer()
+    {
+      return PlayerRegistry.GetLocalPlayer();
+    }
+
+    /// <summary>
+    /// 当前对象是否由本机控制。离线时场景玩家视为本机。
+    /// </summary>
+    public bool IsLocalPlayer
+    {
+      get
+      {
+        if (!GameNetwork.IsActive)
+          return true;
+
+        return PlayerRegistry.GetLocalPlayer() == this;
+      }
+    }
 
     #region MonoBehaviour
 
@@ -48,10 +77,18 @@ namespace TPSShooter
 
     private void Awake()
     {
-      instance = this;
+      if (GameNetwork.IsActive && GetComponentInParent<Mirror.NetworkIdentity>() == null)
+      {
+        GameObject root = transform.parent != null ? transform.parent.gameObject : gameObject;
+        root.SetActive(false);
+        return;
+      }
 
       _characterController = GetComponent<CharacterController>();
       _animator = GetComponent<Animator>();
+      _playerNetwork = GetComponent<PlayerNetwork>();
+      if (_playerNetwork == null)
+        _playerNetwork = GetComponentInParent<PlayerNetwork>();
       _animator.applyRootMotion = movementSettings.ApplyRootMotion;
 
       CheckLayers();
@@ -60,16 +97,27 @@ namespace TPSShooter
       InitializeCrouch();
       InitializeGrenadeCount();
 
-      Subscribe();
+      PlayerRegistry.Register(this);
+      if (!GameNetwork.IsActive)
+      {
+        PlayerRegistry.SetLocal(this);
+        EnableLocalControl();
+      }
     }
 
     private void OnDestroy()
     {
-      Unsubscribe();
+      DisableLocalControl();
+      PlayerRegistry.Unregister(this);
     }
 
     private void Update()
     {
+      if (!_localControlEnabled)
+        return;
+      if (GameManager.IsGamePaused || GameManager.IsGameFinished)
+        return;
+
       UpdateGroundCheck();
 
       UpdateWalk();
@@ -83,12 +131,52 @@ namespace TPSShooter
 
     private void LateUpdate()
     {
+      if (!_localControlEnabled)
+        return;
+
       UpdateSpineIK();
     }
 
     private void OnAnimatorIK(int layerIndex)
     {
+      if (!_localControlEnabled)
+        return;
+
       UpdateLeftHandIK();
+    }
+
+    /// <summary>
+    /// 启用本机输入订阅与本地模拟。离线 Awake 或联机 OnStartLocalPlayer 时调用。
+    /// </summary>
+    public void EnableLocalControl()
+    {
+      if (_localControlEnabled)
+        return;
+
+      _localControlEnabled = true;
+      Subscribe();
+      PlayerRegistry.EnsureSingleAudioListener(PlayerRegistry.GetPlayerRoot(this));
+    }
+
+    /// <summary>
+    /// 关闭本机输入订阅。对象销毁或被联机玩家替换时调用。
+    /// </summary>
+    public void DisableLocalControl()
+    {
+      if (!_localControlEnabled)
+        return;
+
+      _localControlEnabled = false;
+      Unsubscribe();
+    }
+
+    /// <summary>
+    /// 联机启动时停用场景单机玩家的输入，避免与 Mirror 生成的玩家抢控制。
+    /// </summary>
+    public void PrepareForNetworkReplacement()
+    {
+      DisableLocalControl();
+      Unsubscribe();
     }
 
     #endregion
@@ -157,7 +245,8 @@ namespace TPSShooter
 
       IsAlive = false;
 
-      _characterController.enabled = false;
+      if (_characterController != null)
+        _characterController.enabled = false;
 
       // play die animation if the player is not in a car
       if (!IsDrivingVehicle)
@@ -171,7 +260,13 @@ namespace TPSShooter
       if (IsAiming)
         DeactivateAiming();
 
-      Events.PlayerDied.Call();
+      if (IsLocalPlayer)
+        Events.PlayerDied.Call();
+
+      Events.AnyPlayerDied.Call(this);
+
+      if (_playerNetwork != null)
+        _playerNetwork.ServerNotifyDied();
     }
   }
 }

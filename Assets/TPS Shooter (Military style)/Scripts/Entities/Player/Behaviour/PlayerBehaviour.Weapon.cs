@@ -62,6 +62,7 @@ namespace TPSShooter
 
         private void OnFireRequested()
         {
+            if (!isActiveAndEnabled || !IsLocalPlayer) return;
             if (IsAlive == false) return;
 
             if (fireCoroutine != null)
@@ -161,7 +162,8 @@ namespace TPSShooter
         {
             CurrentWeaponBehaviour.ReloadFinished();
             IsReloading = false;
-            Events.PlayerReloaded.Call();
+            if (IsLocalPlayer)
+                Events.PlayerReloaded.Call();
         }
 
         // Returns true if player has empty slot
@@ -279,7 +281,7 @@ namespace TPSShooter
             IsSwapingWeapon = false;
         }
 
-        // Animation Event
+        // Animation Event. Remote animators also fire this; only the local player may raise HUD events.
         private void UnequipEvent()
         {
             if (CurrentWeaponBehaviour)
@@ -291,13 +293,15 @@ namespace TPSShooter
             {
                 CurrentWeaponIndex = -1;
                 CurrentWeaponBehaviour = null;
-                Events.PlayerHideWeapon.Call();
+                if (IsLocalPlayer)
+                    Events.PlayerHideWeapon.Call();
             }
             else
             {
                 CurrentWeaponBehaviour = weaponSettings.AllWeapons[CurrentWeaponIndex];
                 CurrentWeaponBehaviour.gameObject.SetActive(true);
-                Events.PlayerShowWeapon.Call();
+                if (IsLocalPlayer)
+                    Events.PlayerShowWeapon.Call();
             }
         }
 

@@ -56,6 +56,13 @@ namespace TPSShooter
     public bool CanReload { get { return _canReload && BulletsInMag != MagCapacity && BulletsAmount > 0; } }
     public bool IsReloading { get { return _isReloading; } }
 
+    private PlayerBehaviour ownerPlayer;
+
+    private void Awake()
+    {
+      ownerPlayer = GetComponentInParent<PlayerBehaviour>();
+    }
+
     private void OnValidate()
     {
       MagCapacity = Mathf.Max(MagCapacity, 0);
@@ -92,6 +99,7 @@ namespace TPSShooter
     // Shoot
     public void Fire(Vector3 positionWhereToFire)
     {
+      if (!isActiveAndEnabled) return;
       if (_canShoot && BulletsInMag > 0)
       {
         // weapon recoil
@@ -176,7 +184,10 @@ namespace TPSShooter
     // Get collision point
     public Vector3 GetCollisionPoint()
     {
-      return PlayerBehaviour.GetInstance().FirePoint;
+      if (ownerPlayer != null)
+        return ownerPlayer.FirePoint;
+
+      return BulletPosition != null ? BulletPosition.position : transform.position;
     }
 
     public void Reload()

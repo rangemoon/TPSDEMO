@@ -43,7 +43,10 @@ namespace TPSShooter
 
       public void RotatePlayerPivot(float deltaX)
       {
-        var player = PlayerBehaviour.GetInstance();
+        var player = PlayerBehaviour.GetLocalPlayer();
+        if (player == null)
+          return;
+
         Vector2 clamp = new Vector2(
           player.IsCrouching ? tpsCamera.playerCameraSettings.crouchMinAngle : tpsCamera.playerCameraSettings.standMinAngle,
           player.IsCrouching ? tpsCamera.playerCameraSettings.crouchMaxAngle : tpsCamera.playerCameraSettings.standMaxAngle

@@ -41,6 +41,16 @@ namespace TPSShooter.UI.Menu
             Hide();
         }
 
+        /// <summary>
+        /// 从选关界面创建局域网房间，进入当前选中的关卡。
+        /// </summary>
+        public void OnHostPlay()
+        {
+            Events.MenuClickSound.Call();
+            Hide();
+            TPSShooter.GameNetworkManager.StartHostAtScene(locations[locationIndex].sceneIndex);
+        }
+
         public void OnBack()
         {
             Events.MenuClickSound.Call();

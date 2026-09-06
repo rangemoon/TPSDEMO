@@ -54,9 +54,19 @@ namespace LightDev.UI
     }
 
     /// <summary>
+    /// 联机时本地玩家由 Mirror 在 SceneLoaded 事件之后才生成，订阅了 SceneLoaded 的 HUD 会错过 Show。
+    /// 由 PlayerNetwork.OnStartLocalPlayer 调用，补齐初始显示；默认隐藏的元素应重写为空或做状态检查。
+    /// </summary>
+    public virtual void ShowForLateSpawn()
+    {
+      Show();
+    }
+
+    /// <summary>
     /// 1) Activates GameObject.
     /// 2) Calls OnStartShowing().
     /// 3) After showTime delay calls OnFinishShowing().
+    /// Skip the coroutine when a parent is inactive, otherwise Unity throws.
     /// </summary>
     protected void Show()
     {
@@ -64,6 +74,9 @@ namespace LightDev.UI
       StopHideCoroutine();
 
       Activate();
+      if (!gameObject.activeInHierarchy)
+        return;
+
       OnStartShowing();
       showCoroutine = DelayAction(showTime, OnFinishShowing);
     }
@@ -78,6 +91,9 @@ namespace LightDev.UI
       StopHideCoroutine();
 
       Activate();
+      if (!gameObject.activeInHierarchy)
+        return;
+
       OnStartShowing();
       OnFinishShowing();
     }
@@ -89,7 +105,7 @@ namespace LightDev.UI
     /// </summary>
     protected void Hide()
     {
-      if (gameObject.activeSelf == false) return;
+      if (!gameObject.activeInHierarchy) return;
 
       StopShowCoroutine();
       StopHideCoroutine();
@@ -108,7 +124,7 @@ namespace LightDev.UI
     /// </summary>
     protected void InstantHide()
     {
-      if (gameObject.activeSelf == false) return;
+      if (!gameObject.activeInHierarchy) return;
 
       StopShowCoroutine();
       StopHideCoroutine();

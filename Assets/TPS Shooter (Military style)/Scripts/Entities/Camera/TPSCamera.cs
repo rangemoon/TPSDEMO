@@ -86,6 +86,11 @@ namespace TPSShooter
       }
       else
       {
+        PlayerBehaviour localPlayer = PlayerBehaviour.GetLocalPlayer();
+        if (localPlayer == null)
+          return;
+
+        target = localPlayer.transform;
         currentState.OnUpdate();
       }
     }
@@ -163,7 +168,13 @@ namespace TPSShooter
 
     private void OnPlayerFire()
     {
-      var weapon = PlayerBehaviour.GetInstance().CurrentWeaponBehaviour;
+      PlayerBehaviour localPlayer = PlayerBehaviour.GetLocalPlayer();
+      if (localPlayer == null)
+        return;
+
+      var weapon = localPlayer.CurrentWeaponBehaviour;
+      if (weapon == null)
+        return;
 
       FireCameraShake(weapon);
       FireCameraDeviation(weapon);

@@ -13,9 +13,11 @@ namespace TPSShooter
 
     private bool _isDriving;
     private bool _isCarDetected;
+    private PlayerBehaviour ownerPlayer;
 
     private void Awake()
     {
+      ownerPlayer = GetComponent<PlayerBehaviour>();
       Events.UseVehicleRequested += OnUseVehicleRequested;
     }
 
@@ -26,6 +28,9 @@ namespace TPSShooter
 
     private void Update()
     {
+      if (ownerPlayer == null || !ownerPlayer.IsLocalPlayer)
+        return;
+
       if (_isDriving)
       {
         UpdatePlayerPositionInVehicle();
@@ -38,6 +43,9 @@ namespace TPSShooter
 
     private void OnUseVehicleRequested()
     {
+      if (ownerPlayer == null || !ownerPlayer.IsLocalPlayer)
+        return;
+
       if (_isDriving)
       {
         GetOutVehicle();
@@ -76,11 +84,11 @@ namespace TPSShooter
     // Checks if there are any vehicle that the player can use.
     private bool CheckNearbyVehicles()
     {
-      if (PlayerBehaviour.GetInstance().FireHitObject == null) return false;
-      if (!PlayerBehaviour.GetInstance().FireHitObject.GetComponentInParent<Vehicle>()) return false;
-      if (Vector3.Distance(transform.position, PlayerBehaviour.GetInstance().FireHitObject.position) > minVehicleDistance) return false;
+      if (ownerPlayer == null || ownerPlayer.FireHitObject == null) return false;
+      if (!ownerPlayer.FireHitObject.GetComponentInParent<Vehicle>()) return false;
+      if (Vector3.Distance(transform.position, ownerPlayer.FireHitObject.position) > minVehicleDistance) return false;
 
-      VehicleHealthBar vehicleHP = PlayerBehaviour.GetInstance().FireHitObject.GetComponent<VehicleHealthBar>();
+      VehicleHealthBar vehicleHP = ownerPlayer.FireHitObject.GetComponent<VehicleHealthBar>();
       if(vehicleHP && vehicleHP.WasExplode) return false;
 
       return true;
@@ -90,7 +98,7 @@ namespace TPSShooter
     private void GetInVehicle()
     {
       // Determines a new VehicleBehaviour
-      currentVechicleBehaviour = PlayerBehaviour.GetInstance().FireHitObject.GetComponent<Vehicle>();
+      currentVechicleBehaviour = ownerPlayer.FireHitObject.GetComponent<Vehicle>();
 
       // sets the player state
       _isDriving = true;
@@ -102,8 +110,8 @@ namespace TPSShooter
       if (hideSkinWhileDriving)
         skin.SetActive(false);
 
-      PlayerBehaviour.GetInstance().IsDrivingVehicle = true;
-      PlayerBehaviour.GetInstance().DrivingVehicle = currentVechicleBehaviour;
+      ownerPlayer.IsDrivingVehicle = true;
+      ownerPlayer.DrivingVehicle = currentVechicleBehaviour;
       Events.PlayerGetInVehicle.Call();
     }
 
@@ -129,8 +137,8 @@ namespace TPSShooter
       if (hideSkinWhileDriving)
         skin.SetActive(true);
 
-      PlayerBehaviour.GetInstance().IsDrivingVehicle = false;
-      PlayerBehaviour.GetInstance().DrivingVehicle = null;
+      ownerPlayer.IsDrivingVehicle = false;
+      ownerPlayer.DrivingVehicle = null;
       Events.PlayerGetOutVehicle.Call();
     }
 

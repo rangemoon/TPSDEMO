@@ -13,7 +13,15 @@ namespace TPSShooter.UI
 
         private void Start()
         {
-            player = PlayerBehaviour.GetInstance();
+            TryBindPlayer();
+        }
+
+        /// <summary>
+        /// 绑定本机玩家；联机生成时本地玩家可能尚未就绪，命中时再重试。
+        /// </summary>
+        private void TryBindPlayer()
+        {
+            player = PlayerBehaviour.GetLocalPlayer();
         }
 
         public override void Subscribe()
@@ -48,6 +56,11 @@ namespace TPSShooter.UI
 
         private void CreateHitMarkerObject(Vector3 enemyPos)
         {
+            if (player == null)
+                TryBindPlayer();
+            if (player == null)
+                return;
+
             Vector3 relative = player.transform.InverseTransformPoint(enemyPos);
             float angle = Mathf.Atan2(relative.x, relative.z) * Mathf.Rad2Deg;
 

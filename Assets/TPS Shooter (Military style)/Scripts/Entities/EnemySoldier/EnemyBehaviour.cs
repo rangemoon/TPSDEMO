@@ -118,7 +118,7 @@ namespace TPSShooter
             animator = GetComponent<Animator>();
             characterController = GetComponent<CharacterController>();
             navmeshAgent = GetComponent<NavMeshAgent>();
-            player = PlayerBehaviour.GetInstance();
+            RefreshCombatTarget();
 
             animator.applyRootMotion = false;
             navmeshAgent.autoBraking = false;
@@ -130,16 +130,24 @@ namespace TPSShooter
                 b.isKinematic = true;
 
             Events.EnemyCreated.Call(this);
-            Events.PlayerDied += OnPlayerDied;
+            Events.AnyPlayerDied += OnAnyPlayerDied;
         }
 
         private void OnDestroy()
         {
-            Events.PlayerDied -= OnPlayerDied;
+            Events.AnyPlayerDied -= OnAnyPlayerDied;
         }
 
         private void Update()
         {
+            if (GameManager.IsGamePaused || GameManager.IsGameFinished)
+                return;
+            if (GameNetwork.IsClientOnly)
+                return;
+
+            if (Time.frameCount % 15 == 0)
+                RefreshCombatTarget();
+
             currentState.OnUpdate();
             UpdateGravity();
         }
@@ -149,11 +157,61 @@ namespace TPSShooter
             UpdateSpineIK();
         }
 
-        private void OnPlayerDied()
+        /// <summary>
+        /// 有玩家死亡时重新选目标；全灭才进入停止战斗状态。
+        /// </summary>
+        /// <param name="deadPlayer">刚刚死亡的玩家。</param>
+        private void OnAnyPlayerDied(PlayerBehaviour deadPlayer)
         {
             if (currentState == deathState) return;
 
-            ChangeState(playerDiedState);
+            if (!PlayerRegistry.HasAlivePlayer())
+            {
+                ChangeState(playerDiedState);
+                return;
+            }
+
+            if (player == null || player == deadPlayer || !player.IsAlive)
+                RefreshCombatTarget();
+        }
+
+        /// <summary>
+        /// 将仇恨目标更新为距离自己最近的存活玩家。
+        /// </summary>
+        private void RefreshCombatTarget()
+        {
+            player = PlayerRegistry.GetNearestAlive(GetPosition());
+        }
+
+        /// <summary>
+        /// 当前是否有可攻击的存活玩家。
+        /// </summary>
+        private bool HasCombatTarget()
+        {
+            return player != null && player.IsAlive;
+        }
+
+        /// <summary>
+        /// 应用由网络同步过来的血量；降到 0 时进入死亡。
+        /// </summary>
+        /// <param name="networkHp">Host 同步的当前血量。</param>
+        public void ApplyNetworkHp(float networkHp)
+        {
+            hp = networkHp;
+            onHpChanged?.Invoke();
+
+            if (hp <= 0)
+                ApplyNetworkDeath();
+        }
+
+        /// <summary>
+        /// 客户端按 Host 通知进入死亡状态。
+        /// </summary>
+        public void ApplyNetworkDeath()
+        {
+            if (currentState == deathState) return;
+
+            ChangeState(deathState);
         }
 
         private void UpdateGravity()
@@ -178,14 +236,48 @@ namespace TPSShooter
 
         public void OnVehicleCollision()
         {
-            if (player.IsDrivingVehicle)
+            if (HasCombatTarget() && player.IsDrivingVehicle)
             {
                 ChangeState(deathState);
             }
         }
 
+        /// <summary>
+        /// Host 结算子弹伤害并在血量耗尽时死亡。
+        /// </summary>
+        /// <param name="damage">已经乘过部位倍率的最终伤害。</param>
+        public void ApplyServerDamage(float damage)
+        {
+            if (GameNetwork.IsActive && !GameNetwork.IsServer) return;
+            if (currentState == deathState) return;
+
+            hp -= damage;
+            onHpChanged?.Invoke();
+
+            if (hp <= 0)
+                ChangeState(deathState);
+        }
+
+        /// <summary>
+        /// Host 结算手雷击杀。
+        /// </summary>
+        public void ApplyServerGrenadeKill()
+        {
+            if (GameNetwork.IsActive && !GameNetwork.IsServer) return;
+            if (currentState == deathState) return;
+
+            ChangeState(deathState);
+        }
+
         public void OnBulletHit(PlayerBullet bullet, float damageMultiplier)
         {
+            if (GameNetwork.IsClientOnly)
+            {
+                EnemyNetwork enemyNetwork = GetComponent<EnemyNetwork>();
+                if (enemyNetwork != null)
+                    enemyNetwork.CmdApplyBulletDamage(bullet.damage * damageMultiplier);
+                return;
+            }
             if (currentState == deathState) return;
 
             hp -= bullet.damage * damageMultiplier;
@@ -211,7 +303,15 @@ namespace TPSShooter
 
         public void OnGrenadeHit(AbstractGrenade grenade)
         {
-            ChangeState(deathState);
+            if (GameNetwork.IsClientOnly)
+            {
+                EnemyNetwork enemyNetwork = GetComponent<EnemyNetwork>();
+                if (enemyNetwork != null)
+                    enemyNetwork.CmdKillByGrenade();
+                return;
+            }
+
+            ApplyServerGrenadeKill();
         }
 
         private void InitializeStartState()
@@ -278,6 +378,9 @@ namespace TPSShooter
 
         private float GetDistanceToPlayer()
         {
+            if (!HasCombatTarget())
+                return float.MaxValue;
+
             return Vector3.Distance(GetPosition(), player.GetPosition());
         }
 
@@ -293,6 +396,9 @@ namespace TPSShooter
         private Vector3 visionPos;
         private bool IsPlayerNoticedByRaycast()
         {
+            if (!HasCombatTarget())
+                return false;
+
             if (cachedRaycastFrame == Time.frameCount)
             {
                 return cachedIsPlayerRaycasted;
@@ -316,6 +422,9 @@ namespace TPSShooter
 
         private bool IsPlayerNoiseDetected()
         {
+            if (!HasCombatTarget())
+                return false;
+
             return player.Noise > Vector3.Distance(transform.position, player.GetPosition());
         }
 
@@ -323,6 +432,9 @@ namespace TPSShooter
         private int cachedFOVFrame = -1;
         private bool IsPlayerInFieldOfView()
         {
+            if (!HasCombatTarget())
+                return false;
+
             if (cachedFOVFrame == Time.frameCount)
             {
                 return cachedIsPlayerInFOV;
