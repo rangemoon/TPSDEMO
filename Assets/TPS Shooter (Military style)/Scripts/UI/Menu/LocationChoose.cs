@@ -17,13 +17,7 @@ namespace TPSShooter.UI.Menu
         [Header("Locations")]
         public LocationInfo[] locations;
 
-        [Header("Unlock")]
-        public GameObject lockOverlay;
-        public Button unlockButton;
-        public Button playButton;
-
         private int locationIndex;
-        private bool isShowingAd;
 
         public override void Subscribe()
         {
@@ -37,17 +31,11 @@ namespace TPSShooter.UI.Menu
 
         protected override void OnStartShowing()
         {
-            unlockButton.onClick.AddListener(OnUnlockLocation);
             UpdateLocationInfo();
         }
 
         public void OnPlay()
         {
-            int sceneIdx = locations[locationIndex].sceneIndex;
-            if (!UnlockManager.IsLocationUnlocked(sceneIdx))
-            {
-                return;
-            }
             Events.MenuClickSound.Call();
             Events.RequestMenuDownloading.Call(locations[locationIndex].sceneIndex);
             Hide();
@@ -80,48 +68,6 @@ namespace TPSShooter.UI.Menu
         {
             locationInfoText.text = locations[locationIndex].info;
             locationImage.sprite = locations[locationIndex].image;
-
-            int sceneIdx = locations[locationIndex].sceneIndex;
-            bool isUnlocked = UnlockManager.IsLocationUnlocked(sceneIdx);
-            if (isUnlocked)
-            {
-                // SaveLoad.SceneIndex = sceneIdx;
-                lockOverlay.SetActive(false);
-                playButton.gameObject.SetActive(true);
-            }
-            else
-            {
-                lockOverlay.SetActive(true);
-                playButton.gameObject.SetActive(false);
-            }
-
-        }
-
-        // common_box: 带有激励视频的宝箱，看完视频解锁地图
-        public void OnUnlockLocation()
-        {
-            if (isShowingAd) return;
-
-            int sceneIdx = locations[locationIndex].sceneIndex;
-            if (UnlockManager.IsLocationUnlocked(sceneIdx)) return;
-
-            // isShowingAd = true;
-            // // ** 谨慎使用 **
-            // xh.api.Ad.ShowTrickBoxOrVideo(
-            //   "common_box",
-            //   () =>
-            //   {
-            //       UnlockManager.UnlockLocation(sceneIdx);
-            //       isShowingAd = false;
-            //       UpdateLocationInfo();
-            //   },
-            //   () =>
-            //   {
-            //       isShowingAd = false;
-            //   }
-            // );
-            UnlockManager.UnlockLocation(sceneIdx);
-            UpdateLocationInfo();
         }
 
         [System.Serializable]

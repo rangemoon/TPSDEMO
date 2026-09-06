@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 3d1ac022a8fa14740b0fd02b5e3adb34
+guid: c7d4c13b5986fdd44bb4ec793a36fad7
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -8,14 +8,14 @@ TrueTypeFontImporter:
   characterSpacing: 0
   characterPadding: 1
   includeFontData: 1
-  fontName: Arial
   fontNames:
-  - Arial
+  - Douyin Sans
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
   ascentCalculationMode: 1
   useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
   userData: 
   assetBundleName: 
   assetBundleVariant: 

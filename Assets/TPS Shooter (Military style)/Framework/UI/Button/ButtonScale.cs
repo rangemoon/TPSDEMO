@@ -5,25 +5,33 @@ using DG.Tweening;
 
 namespace LightDev.UI
 {
-  [RequireComponent(typeof(Image))]
-  public class ButtonScale : BaseButton
-  {
-    protected override void AnimatePress()
+    [RequireComponent(typeof(Image))]
+    public class ButtonScale : BaseButton
     {
-      KillSequences();
-      Sequence(target.transform.DOScale(0.8f, 0.1f));
-    }
+        private Vector3 normalScale;
 
-    protected override void AnimateUnpress()
-    {
-      KillSequences();
-      Sequence(target.transform.DOScale(1f, 0.1f));
-    }
+        protected override void Awake()
+        {
+            base.Awake();
+            normalScale = target.transform.localScale;
+        }
 
-    public override void ResetButton()
-    {
-      KillSequences();
-      target.transform.localScale = Vector3.one;
+        protected override void AnimatePress()
+        {
+            KillSequences();
+            Sequence(target.transform.DOScale(normalScale * 0.8f, 0.1f));
+        }
+
+        protected override void AnimateUnpress()
+        {
+            KillSequences();
+            Sequence(target.transform.DOScale(normalScale, 0.1f));
+        }
+
+        public override void ResetButton()
+        {
+            KillSequences();
+            target.transform.localScale = normalScale;
+        }
     }
-  }
 }
