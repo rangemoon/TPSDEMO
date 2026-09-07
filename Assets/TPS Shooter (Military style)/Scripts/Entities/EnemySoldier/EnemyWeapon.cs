@@ -20,7 +20,14 @@ namespace TPSShooter
     [Header("- Fire particle -")]
     public ParticleSystem FireParticleSystem;
 
+    private EnemyNetwork enemyNetwork;
+
     public bool CanShoot { get; private set; } = true;
+
+    private void Awake()
+    {
+      enemyNetwork = GetComponentInParent<EnemyNetwork>();
+    }
 
     public bool Fire(Vector3 positionWhereToFire)
     {
@@ -30,27 +37,48 @@ namespace TPSShooter
       CanShoot = false;
       DelayAction(ShootFrequency, () => CanShoot = true, false);
 
-      // Sound
-      FireSound?.PlayOneShot(FireSound.clip);
-
-      // Particle
-      FireParticleSystem?.Stop();
-      FireParticleSystem?.Play();
-
-      // Bullet position
       BulletPosition.LookAt(positionWhereToFire);
+      PlayMuzzleFx();
+      SpawnBullet(BulletPosition.position, BulletPosition.rotation, true);
 
-      // Spawns bullet from pool
-      GameObject bullet = GamePool.Spawn(
-        BulletPrefab,
-        BulletPosition.transform.position,
-        BulletPosition.transform.rotation
-      );
-      EnemyBullet enemyBullet = bullet.GetComponent<EnemyBullet>();
-      enemyBullet.Init();
-      enemyBullet.MasterOfBullet = transform;
+      if (enemyNetwork != null)
+        enemyNetwork.ServerBroadcastShot(BulletPosition.position, BulletPosition.rotation);
 
       return true;
+    }
+
+    /// <summary>
+    /// 加入端复制 Host 开火：枪口特效和弹道，不结算伤害。
+    /// </summary>
+    public void PlayReplicatedShot(Vector3 position, Quaternion rotation)
+    {
+      PlayMuzzleFx();
+      SpawnBullet(position, rotation, false);
+    }
+
+    private void PlayMuzzleFx()
+    {
+      FireSound?.PlayOneShot(FireSound.clip);
+      FireParticleSystem?.Stop();
+      FireParticleSystem?.Play();
+    }
+
+    private void SpawnBullet(Vector3 position, Quaternion rotation, bool dealsDamage)
+    {
+      if (BulletPrefab == null)
+        return;
+
+      GameObject bullet = GamePool.Spawn(BulletPrefab, position, rotation);
+      EnemyBullet enemyBullet = bullet.GetComponent<EnemyBullet>();
+      if (enemyBullet == null)
+        return;
+
+      if (dealsDamage)
+        enemyBullet.Init();
+      else
+        enemyBullet.InitVisualOnly();
+
+      enemyBullet.MasterOfBullet = transform;
     }
   }
 }

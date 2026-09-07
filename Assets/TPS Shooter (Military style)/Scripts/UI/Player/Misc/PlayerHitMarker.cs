@@ -32,6 +32,7 @@ namespace TPSShooter.UI
             Events.PlayerDied += Hide;
             Events.PlayerBulletHit += OnPlayerBulletHit;
             Events.PlayerZombieHit += OnPlayerZombieHit;
+            Events.PlayerHitFromPosition += CreateHitMarkerObject;
         }
 
         public override void Unsubscribe()
@@ -42,10 +43,14 @@ namespace TPSShooter.UI
             Events.PlayerDied -= Hide;
             Events.PlayerBulletHit -= OnPlayerBulletHit;
             Events.PlayerZombieHit -= OnPlayerZombieHit;
+            Events.PlayerHitFromPosition -= CreateHitMarkerObject;
         }
 
         private void OnPlayerBulletHit(EnemyBullet bullet)
         {
+            if (bullet == null || bullet.MasterOfBullet == null)
+                return;
+
             CreateHitMarkerObject(bullet.MasterOfBullet.position);
         }
 

@@ -45,6 +45,9 @@ namespace TPSShooter.UI.Menu
         currentTime += Time.deltaTime;
         yield return null;
       }
+
+      progressText.text = "100%";
+      progressBar.value = 100;
     }
 
     private IEnumerator LoadScene(int sceneIndex)

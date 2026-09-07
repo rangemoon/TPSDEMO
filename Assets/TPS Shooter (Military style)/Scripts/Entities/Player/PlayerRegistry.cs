@@ -30,19 +30,25 @@ namespace TPSShooter
         }
 
         /// <summary>
-        /// 将玩家加入注册表。重复注册会被忽略。
+        /// 将玩家加入注册表。已登记时仍会在变为可计入后通知结算
+        /// （Awake 时 netId 往往还是 0，OnStartClient 必须再触发一次）。
         /// </summary>
         /// <param name="player">要登记的玩家。</param>
         public static void Register(PlayerBehaviour player)
         {
-            if (player == null || players.Contains(player))
+            if (player == null)
                 return;
 
-            players.Add(player);
+            if (!players.Contains(player))
+                players.Add(player);
+
+            if (IsCountableAlive(player) && GameManager.ActiveInstance != null)
+                GameManager.ActiveInstance.ScheduleEvaluate();
         }
 
         /// <summary>
         /// 将玩家从注册表移除；若是本地玩家则同时清空本地引用。
+        /// 仅当移除的是可计入对局的玩家时才通知结算（掉线），忽略场景占位关闭。
         /// </summary>
         /// <param name="player">要移除的玩家。</param>
         public static void Unregister(PlayerBehaviour player)
@@ -50,9 +56,13 @@ namespace TPSShooter
             if (player == null)
                 return;
 
-            players.Remove(player);
+            bool shouldEvaluate = IsCountableAlive(player);
+            bool removed = players.Remove(player);
             if (localPlayer == player)
                 localPlayer = null;
+
+            if (removed && shouldEvaluate && GameManager.ActiveInstance != null)
+                GameManager.ActiveInstance.ScheduleEvaluate();
         }
 
         /// <summary>
@@ -66,14 +76,14 @@ namespace TPSShooter
         }
 
         /// <summary>
-        /// 是否仍有至少一名存活玩家。
+        /// 是否仍有至少一名可计入对局的存活玩家。
+        /// 忽略 null、未激活、已死亡；联机时再忽略尚未分配 netId 的场景占位。
         /// </summary>
         public static bool HasAlivePlayer()
         {
             for (int i = 0; i < players.Count; i++)
             {
-                PlayerBehaviour player = players[i];
-                if (player != null && player.IsAlive)
+                if (IsCountableAlive(players[i]))
                     return true;
             }
 
@@ -92,7 +102,7 @@ namespace TPSShooter
             for (int i = 0; i < players.Count; i++)
             {
                 PlayerBehaviour player = players[i];
-                if (player == null || !player.IsAlive)
+                if (!IsCountableAlive(player))
                     continue;
 
                 float sqr = (player.GetPosition() - position).sqrMagnitude;
@@ -104,6 +114,27 @@ namespace TPSShooter
             }
 
             return nearest;
+        }
+
+        /// <summary>
+        /// 玩家是否可作为存活目标/对局统计：已激活、存活，且联机时不是未生成的场景占位。
+        /// </summary>
+        /// <param name="player">待检查的玩家。</param>
+        public static bool IsCountableAlive(PlayerBehaviour player)
+        {
+            if (player == null || !player.IsAlive)
+                return false;
+            if (!player.gameObject.activeInHierarchy)
+                return false;
+
+            if (GameNetwork.IsActive)
+            {
+                NetworkIdentity identity = player.GetComponentInParent<NetworkIdentity>();
+                if (identity == null || identity.netId == 0)
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>

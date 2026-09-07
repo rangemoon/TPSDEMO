@@ -63,6 +63,18 @@ namespace TPSShooter
       GameObject.Instantiate(obj).name = "PlayerCanvas";
     }
 
+    [MenuItem("TPS Shooter/Add to scene/Match Overlay", false, 23)]
+    private static void AddMatchOverlayToScene()
+    {
+      MatchOverlayPrefabBuilder.AddToOpenScene();
+    }
+
+    [MenuItem("TPS Shooter/Setup Match Overlay In Game Scenes", false, 24)]
+    private static void SetupMatchOverlayInGameScenes()
+    {
+      MatchOverlayPrefabBuilder.SetupInGameScenes();
+    }
+
     [MenuItem("TPS Shooter/Clear Saved Data (PlayerPrefs)", false, 500)]
     private static void ClearAllData()
     {

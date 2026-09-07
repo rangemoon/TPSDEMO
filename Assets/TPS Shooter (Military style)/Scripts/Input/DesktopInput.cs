@@ -21,7 +21,6 @@ namespace TPSShooter
     public KeyCode reloadKeyCode = KeyCode.R;
     public KeyCode dropWeaponKeyCode = KeyCode.K;
     public KeyCode grenadeKeyCode = KeyCode.G;
-    public KeyCode chooseWeaponKeyCode = KeyCode.P;
     public KeyCode[] swapWeaponKeyCodes = {
         KeyCode.Alpha0,
         KeyCode.Alpha1,
@@ -42,7 +41,6 @@ namespace TPSShooter
     [Space]
     public KeyCode pauseGameKeyCode = KeyCode.Escape;
 
-    private bool isWeaponChoose;
     private PlayerBehaviour ownerPlayer;
 
     private void Awake()
@@ -76,36 +74,15 @@ namespace TPSShooter
         return;
       }
 
-      // Weapon Choose
-      if (Input.GetKeyDown(chooseWeaponKeyCode))
-      {
-        isWeaponChoose = true;
-        UnlockCursor();
-        Events.WeaponChooseStartRequest.Call();
-      }
-      else if (Input.GetKeyUp(chooseWeaponKeyCode))
-      {
-        isWeaponChoose = false;
-        LockCursor();
-        Events.WeaponChooseFinishRequest.Call();
-      }
-
       InputController.VerticalMovement = Input.GetAxis("Vertical");
       InputController.HorizontalMovement = Input.GetAxis("Horizontal");
-      InputController.VerticalRotation = isWeaponChoose ? 0 : Input.GetAxis("Mouse Y") * mouseSensitivity;
-      InputController.HorizontalRotation = isWeaponChoose ? 0 : Input.GetAxis("Mouse X") * mouseSensitivity;
-
-      if (isWeaponChoose) return;
+      InputController.VerticalRotation = Input.GetAxis("Mouse Y") * mouseSensitivity;
+      InputController.HorizontalRotation = Input.GetAxis("Mouse X") * mouseSensitivity;
 
       // Pause state
       if (Input.GetKeyDown(pauseGameKeyCode))
       {
         Events.GamePauseRequested.Call();
-
-        if (isWeaponChoose)
-        {
-          Events.WeaponChooseFinishRequest.Call();
-        }
       }
 
       InputController.IsRun = Input.GetKey(runKeyCode);

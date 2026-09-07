@@ -151,6 +151,29 @@ namespace TPSShooter
       }
     }
 
+    /// <summary>
+    /// 其他端看到这把枪开火：枪口特效和弹道，不扣弹药、不结算伤害。
+    /// </summary>
+    public void PlayReplicatedShot(Vector3 position, Quaternion rotation)
+    {
+      if (FireSound != null && FireSound.clip != null)
+        FireSound.PlayOneShot(FireSound.clip);
+
+      if (FireParticleSystem != null)
+      {
+        FireParticleSystem.Stop();
+        FireParticleSystem.Play();
+      }
+
+      if (BulletPrefab == null)
+        return;
+
+      GameObject bulletObj = GamePool.Spawn(BulletPrefab, position, rotation);
+      AbstractBullet bullet = bulletObj.GetComponent<AbstractBullet>();
+      if (bullet != null)
+        bullet.InitVisualOnly();
+    }
+
     // Makes shooting available
     private void CanShootNow()
     {

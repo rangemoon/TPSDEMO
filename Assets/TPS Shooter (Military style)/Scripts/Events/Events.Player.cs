@@ -1,4 +1,5 @@
 ﻿using TPSShooter;
+using UnityEngine;
 
 namespace LightDev
 {
@@ -43,5 +44,6 @@ namespace LightDev
 
     public static Event<EnemyBullet> PlayerBulletHit;
     public static Event<ZombieBehaviour> PlayerZombieHit;
+    public static Event<Vector3> PlayerHitFromPosition;
   }
 }

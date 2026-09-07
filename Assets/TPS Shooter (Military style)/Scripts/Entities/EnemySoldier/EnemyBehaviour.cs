@@ -1,4 +1,5 @@
-﻿using UnityEngine.AI;
+﻿using System.Collections.Generic;
+using UnityEngine.AI;
 using UnityEngine;
 
 using LightDev;
@@ -129,6 +130,7 @@ namespace TPSShooter
             foreach (Rigidbody b in cachedRigidbodies)
                 b.isKinematic = true;
 
+            EnemyRegistry.Register(this);
             Events.EnemyCreated.Call(this);
             Events.AnyPlayerDied += OnAnyPlayerDied;
         }
@@ -136,6 +138,7 @@ namespace TPSShooter
         private void OnDestroy()
         {
             Events.AnyPlayerDied -= OnAnyPlayerDied;
+            EnemyRegistry.Unregister(this);
         }
 
         private void Update()
@@ -171,16 +174,56 @@ namespace TPSShooter
                 return;
             }
 
-            if (player == null || player == deadPlayer || !player.IsAlive)
+            if (player == null || player == deadPlayer || !PlayerRegistry.IsCountableAlive(player))
                 RefreshCombatTarget();
         }
 
         /// <summary>
-        /// 将仇恨目标更新为距离自己最近的存活玩家。
+        /// 在全部存活玩家中选仇恨：优先感知范围内可见/可听的最近目标，否则回退到最近存活玩家。
         /// </summary>
         private void RefreshCombatTarget()
         {
-            player = PlayerRegistry.GetNearestAlive(GetPosition());
+            const float currentTargetStickiness = 0.85f;
+
+            PlayerBehaviour bestDetected = null;
+            float bestDetectedSqr = float.MaxValue;
+            PlayerBehaviour nearest = null;
+            float nearestSqr = float.MaxValue;
+            Vector3 selfPos = GetPosition();
+            float maxDetectSqr = MaxPlayerDetectionRadius * MaxPlayerDetectionRadius;
+
+            IReadOnlyList<PlayerBehaviour> players = PlayerRegistry.GetPlayers();
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerBehaviour candidate = players[i];
+                if (!PlayerRegistry.IsCountableAlive(candidate))
+                    continue;
+
+                float sqr = (candidate.GetPosition() - selfPos).sqrMagnitude;
+                float compareSqr = sqr;
+                if (candidate == player)
+                    compareSqr *= currentTargetStickiness;
+
+                if (compareSqr < nearestSqr)
+                {
+                    nearestSqr = compareSqr;
+                    nearest = candidate;
+                }
+
+                if (sqr > maxDetectSqr)
+                    continue;
+
+                if (!IsPlayerDetected(candidate))
+                    continue;
+
+                if (compareSqr < bestDetectedSqr)
+                {
+                    bestDetectedSqr = compareSqr;
+                    bestDetected = candidate;
+                }
+            }
+
+            player = bestDetected != null ? bestDetected : nearest;
         }
 
         /// <summary>
@@ -188,7 +231,20 @@ namespace TPSShooter
         /// </summary>
         private bool HasCombatTarget()
         {
-            return player != null && player.IsAlive;
+            return PlayerRegistry.IsCountableAlive(player);
+        }
+
+        /// <summary>
+        /// 指定玩家是否在 FOV/噪声感知下且视线可达。
+        /// </summary>
+        /// <param name="target">待检测玩家。</param>
+        private bool IsPlayerDetected(PlayerBehaviour target)
+        {
+            if (target == null)
+                return false;
+
+            return (IsPlayerInFieldOfView(target) || IsPlayerNoiseDetected(target))
+                && IsPlayerNoticedByRaycast(target);
         }
 
         /// <summary>
@@ -395,22 +451,32 @@ namespace TPSShooter
         private Vector3 playerPos;
         private Vector3 visionPos;
         private bool warnedVisionPositionMissing;
+
         private bool IsPlayerNoticedByRaycast()
         {
             if (!HasCombatTarget())
                 return false;
 
             if (cachedRaycastFrame == Time.frameCount)
-            {
                 return cachedIsPlayerRaycasted;
-            }
 
             cachedRaycastFrame = Time.frameCount;
-            cachedIsPlayerRaycasted = false;
-            playerPos = player.GetPosition() + new Vector3(0, 1, 0);
+            cachedIsPlayerRaycasted = IsPlayerNoticedByRaycast(player);
+            return cachedIsPlayerRaycasted;
+        }
+
+        /// <summary>
+        /// 对指定玩家做视线检测（不走当前目标缓存）。
+        /// </summary>
+        /// <param name="target">待检测玩家。</param>
+        private bool IsPlayerNoticedByRaycast(PlayerBehaviour target)
+        {
+            if (target == null)
+                return false;
+
+            playerPos = target.GetPosition() + new Vector3(0, 1, 0);
             if (VisionSettings.VisionPosition == null)
             {
-                // 视觉锚点未配置时退化为自身胸口位置，避免敌人因 NRE 卡死在 Idle 状态
                 if (!warnedVisionPositionMissing)
                 {
                     warnedVisionPositionMissing = true;
@@ -422,16 +488,14 @@ namespace TPSShooter
             {
                 visionPos = VisionSettings.VisionPosition.position;
             }
-            if (Physics.Linecast(visionPos, playerPos, out playerRaycastHit, VisionSettings.VisionLayers))
-            {
-                if (playerRaycastHit.collider.GetComponentInParent<PlayerBehaviour>()
-                  || (playerRaycastHit.collider.gameObject.GetComponentInParent<Vehicle>() && player.IsDrivingVehicle))
-                {
-                    cachedIsPlayerRaycasted = true;
-                }
-            }
 
-            return cachedIsPlayerRaycasted;
+            if (!Physics.Linecast(visionPos, playerPos, out playerRaycastHit, VisionSettings.VisionLayers))
+                return false;
+
+            if (playerRaycastHit.collider.GetComponentInParent<PlayerBehaviour>() != null)
+                return true;
+
+            return playerRaycastHit.collider.gameObject.GetComponentInParent<Vehicle>() != null && target.IsDrivingVehicle;
         }
 
         private bool IsPlayerNoiseDetected()
@@ -439,26 +503,41 @@ namespace TPSShooter
             if (!HasCombatTarget())
                 return false;
 
-            return player.Noise > Vector3.Distance(transform.position, player.GetPosition());
+            return IsPlayerNoiseDetected(player);
+        }
+
+        private bool IsPlayerNoiseDetected(PlayerBehaviour target)
+        {
+            if (target == null)
+                return false;
+
+            return target.Noise > Vector3.Distance(transform.position, target.GetPosition());
         }
 
         private bool cachedIsPlayerInFOV;
         private int cachedFOVFrame = -1;
+
         private bool IsPlayerInFieldOfView()
         {
             if (!HasCombatTarget())
                 return false;
 
             if (cachedFOVFrame == Time.frameCount)
-            {
                 return cachedIsPlayerInFOV;
-            }
 
             cachedFOVFrame = Time.frameCount;
-            Vector3 targetDir = player.GetPosition() - transform.position;
-            float angle = Vector3.Angle(targetDir, transform.forward);
-            cachedIsPlayerInFOV = Mathf.Abs(angle) <= VisionSettings.fov;
+            cachedIsPlayerInFOV = IsPlayerInFieldOfView(player);
             return cachedIsPlayerInFOV;
+        }
+
+        private bool IsPlayerInFieldOfView(PlayerBehaviour target)
+        {
+            if (target == null)
+                return false;
+
+            Vector3 targetDir = target.GetPosition() - transform.position;
+            float angle = Vector3.Angle(targetDir, transform.forward);
+            return Mathf.Abs(angle) <= VisionSettings.fov;
         }
 
         private bool CanChangeStateToSearch()

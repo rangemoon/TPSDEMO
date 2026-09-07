@@ -14,16 +14,31 @@ namespace TPSShooter
     private Vector3 _startPosition;
     private Vector3 _startDirection;
     private bool _isActive;
+    private bool _dealsDamage = true;
 
     /// <summary>
     /// Initializes bullet state. Must be called after spawning from pool.
     /// </summary>
     public void Init()
     {
+      InitInternal(true);
+    }
+
+    /// <summary>
+    /// 联机复制弹道：只飞、贴花，不结算伤害，避免远端再打一次。
+    /// </summary>
+    public void InitVisualOnly()
+    {
+      InitInternal(false);
+    }
+
+    private void InitInternal(bool dealsDamage)
+    {
       _startShootTime = Time.time;
       _startPosition = transform.position;
       _startDirection = transform.forward;
       _isActive = true;
+      _dealsDamage = dealsDamage;
     }
 
     private void Update()
@@ -43,7 +58,8 @@ namespace TPSShooter
       if (Physics.Linecast(transform.position, nextPosition, out hit, hitLayers))
       {
         SpawnDecals(hit);
-        OnBulletCollision(hit);
+        if (_dealsDamage)
+          OnBulletCollision(hit);
         Despawn();
       }
       else

@@ -17,11 +17,13 @@ namespace TPSShooter
         private float syncedHp = 100f;
 
         private EnemyBehaviour enemy;
+        private EnemyWeapon enemyWeapon;
 
         private void Awake()
         {
             enemy = GetComponent<EnemyBehaviour>();
             enemy.onHpChanged += OnEnemyHpChanged;
+            enemyWeapon = GetComponentInChildren<EnemyWeapon>(true);
         }
 
         private void OnDestroy()
@@ -64,6 +66,29 @@ namespace TPSShooter
         {
             if (enemy != null)
                 enemy.ApplyServerGrenadeKill();
+        }
+
+        /// <summary>
+        /// Host 开火后把弹道复制到其他端。
+        /// </summary>
+        public void ServerBroadcastShot(Vector3 position, Quaternion rotation)
+        {
+            if (!isServer)
+                return;
+
+            RpcPlayShot(position, rotation);
+        }
+
+        [ClientRpc]
+        private void RpcPlayShot(Vector3 position, Quaternion rotation)
+        {
+            if (isServer)
+                return;
+
+            if (enemyWeapon == null)
+                enemyWeapon = GetComponentInChildren<EnemyWeapon>(true);
+            if (enemyWeapon != null)
+                enemyWeapon.PlayReplicatedShot(position, rotation);
         }
 
         /// <summary>

@@ -54,6 +54,6 @@ namespace TPSShooter.UI
     public void OnGrenadeThrowDown() { Events.GrenadeStartThrowRequest.Call(); }
     public void OnGrenadeThrowUp() { Events.GrenadeFinishThrowRequest.Call(); }
 
-    public void OnWeaponChooseRequest() { Events.WeaponChooseStartRequest.Call(); }
+    public void OnWeaponChooseRequest() { }
   }
 }

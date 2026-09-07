@@ -9,8 +9,8 @@ namespace TPSShooter
 
     protected override void OnBulletCollision(RaycastHit hit)
     {
-      // Single GetComponent instead of two
-      var player = hit.transform.GetComponent<PlayerBehaviour>();
+      // 命中子碰撞体时也要找到 PlayerBehaviour，否则联机远端玩家挨打无伤害
+      var player = hit.transform.GetComponentInParent<PlayerBehaviour>();
       if (player != null)
       {
         player.OnBulletHit(this);

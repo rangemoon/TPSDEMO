@@ -26,12 +26,20 @@ namespace TPSShooter
         public int hitMarkerWarmUpCount = 5;
         public int bloodEffectWarmUpCount = 200;
 
+        private bool evaluateScheduled;
+        private Coroutine evaluateCoroutine;
+        private bool hasHadCountablePlayer;
+        private bool hasHadAliveEnemy;
+
         private void Awake()
         {
             ActiveInstance = this;
             IsGamePaused = false;
             IsGameFinished = false;
             IsGameWon = false;
+            evaluateScheduled = false;
+            hasHadCountablePlayer = false;
+            hasHadAliveEnemy = false;
 
             // Pre-populate object pools to avoid first-frame hitches during combat
             WarmUpPools();
@@ -41,7 +49,10 @@ namespace TPSShooter
             Events.GameReplayRequested += OnGameReplayRequested;
             Events.GameLoadHomeSceneRequested += OnGameLoadHomeSceneRequested;
             Events.AnyPlayerDied += OnAnyPlayerDied;
-            Events.GameWon += OnGameWon;
+            Events.EnemyCreated += OnEnemyCreated;
+            Events.EnemyKilled += OnEnemyKilled;
+            Events.ZombieCreated += OnZombieCreated;
+            Events.ZobmieKilled += OnZombieKilled;
         }
 
         private void WarmUpPools()
@@ -64,7 +75,10 @@ namespace TPSShooter
             Events.GameReplayRequested -= OnGameReplayRequested;
             Events.GameLoadHomeSceneRequested -= OnGameLoadHomeSceneRequested;
             Events.AnyPlayerDied -= OnAnyPlayerDied;
-            Events.GameWon -= OnGameWon;
+            Events.EnemyCreated -= OnEnemyCreated;
+            Events.EnemyKilled -= OnEnemyKilled;
+            Events.ZombieCreated -= OnZombieCreated;
+            Events.ZobmieKilled -= OnZombieKilled;
         }
 
         private void OnGamePauseRequested()
@@ -106,25 +120,80 @@ namespace TPSShooter
         }
 
         /// <summary>
-        /// 任意玩家死亡时检查是否全灭；仅全灭才判定失败。
-        /// 联机时结束由 Host 裁决并广播，客户端不依据本地注册表自行判定。
+        /// 任意玩家死亡后延迟结算；联机仅 Host 裁决。
         /// </summary>
         /// <param name="player">刚刚死亡的玩家。</param>
         private void OnAnyPlayerDied(PlayerBehaviour player)
         {
-            if (IsGameFinished) return;
-            if (GameNetwork.IsClientOnly) return;
-            if (PlayerRegistry.HasAlivePlayer()) return;
-
-            FinishGame(false);
+            ScheduleEvaluate();
         }
 
-        private void OnGameWon()
+        private void OnEnemyCreated(EnemyBehaviour enemy)
+        {
+            ScheduleEvaluate();
+        }
+
+        private void OnEnemyKilled(EnemyBehaviour enemy)
+        {
+            ScheduleEvaluate();
+        }
+
+        private void OnZombieCreated(ZombieBehaviour zombie)
+        {
+            ScheduleEvaluate();
+        }
+
+        private void OnZombieKilled(ZombieBehaviour zombie)
+        {
+            ScheduleEvaluate();
+        }
+
+        /// <summary>
+        /// 同一帧只排一次结算，等死亡/下一波生成处理完后再判胜负。
+        /// </summary>
+        public void ScheduleEvaluate()
+        {
+            if (IsGameFinished) return;
+            if (GameNetwork.IsClientOnly) return;
+            if (evaluateScheduled) return;
+
+            evaluateScheduled = true;
+            evaluateCoroutine = StartCoroutine(EvaluateNextFrame());
+        }
+
+        private IEnumerator EvaluateNextFrame()
+        {
+            yield return null;
+            evaluateScheduled = false;
+            evaluateCoroutine = null;
+            EvaluateMatch();
+        }
+
+        /// <summary>
+        /// Host/单机权威结算：无存活玩家判负；曾出现过敌人且现已清空且无剩余波次则判胜。
+        /// 必须先见过可计入玩家，避免开局关占位时误判负；必须先见过活着的敌人，避免刷怪前误判胜。
+        /// </summary>
+        private void EvaluateMatch()
         {
             if (IsGameFinished) return;
             if (GameNetwork.IsClientOnly) return;
 
-            FinishGame(true);
+            if (PlayerRegistry.HasAlivePlayer())
+                hasHadCountablePlayer = true;
+            if (EnemyRegistry.HasAliveEnemy())
+                hasHadAliveEnemy = true;
+
+            if (!hasHadCountablePlayer)
+                return;
+
+            if (!PlayerRegistry.HasAlivePlayer())
+            {
+                FinishGame(false);
+                return;
+            }
+
+            if (hasHadAliveEnemy && !EnemyRegistry.HasAliveEnemy() && !EnemyGenerator.HasPendingWavesAnywhere())
+                FinishGame(true);
         }
 
         private void PauseGame()

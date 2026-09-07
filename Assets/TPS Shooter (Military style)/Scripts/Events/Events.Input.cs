@@ -9,9 +9,6 @@
     public static Event ReloadRequested;
     public static Event AimActivateRequested;
 
-    public static Event WeaponChooseStartRequest;
-    public static Event WeaponChooseFinishRequest;
-
     public static Event<int> SwapWeaponRequested;
     public static Event<int> DropWeaponRequested;
 

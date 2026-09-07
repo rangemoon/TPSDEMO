@@ -11,10 +11,24 @@ namespace TPSShooter.UI
 
     protected int selectedButtonId;
 
+    /// <summary>
+    /// 游戏内武器转盘已移除，联机补 HUD 不能再把它 Show 出来。
+    /// </summary>
+    public override void ShowForLateSpawn()
+    {
+    }
+
     public override void Subscribe()
     {
+      gameObject.SetActive(false);
+
+      if (buttons == null)
+        return;
+
       foreach (WeaponChooseButton button in buttons)
       {
+        if (button == null)
+          continue;
         button.onSelected += OnButtonSelected;
         button.onDeselected += OnButtonDeselected;
       }

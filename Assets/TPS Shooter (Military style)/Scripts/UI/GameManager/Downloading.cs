@@ -35,6 +35,13 @@ namespace TPSShooter.UI
             Events.SceneLoaded -= Hide;
         }
 
+        /// <summary>
+        /// 加载条只在切关时显示。联机补 HUD 若把它 Show，SceneLoaded 已过，会永远停在 99%。
+        /// </summary>
+        public override void ShowForLateSpawn()
+        {
+        }
+
         protected override void OnStartShowing()
         {
             base.OnStartShowing();

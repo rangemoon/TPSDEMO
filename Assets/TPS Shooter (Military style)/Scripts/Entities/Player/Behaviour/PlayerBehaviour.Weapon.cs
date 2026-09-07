@@ -115,6 +115,8 @@ namespace TPSShooter
         {
             CurrentWeaponBehaviour.Fire(FirePoint);
             Events.PlayerFire.Call();
+            if (_playerNetwork != null && CurrentWeaponBehaviour != null && CurrentWeaponBehaviour.BulletPosition != null)
+                _playerNetwork.NotifyShotVisual(CurrentWeaponBehaviour.BulletPosition.position, CurrentWeaponBehaviour.BulletPosition.rotation);
             if (CurrentWeaponBehaviour.BulletsInMag == 0)
             {
                 Events.ReloadRequested.Call();

@@ -35,6 +35,21 @@ namespace TPSShooter
             return resolved;
         }
 
+        public override void OnStartServer()
+        {
+            if (player == null)
+                player = ResolvePlayer();
+
+            if (player != null)
+            {
+                player.ResetHpToFull();
+                player.EnableSpawnProtection(3f);
+            }
+
+            syncedHp = 100f;
+            syncedAlive = true;
+        }
+
         /// <summary>
         /// Host 同步当前血量到所有客户端。
         /// </summary>
@@ -59,6 +74,66 @@ namespace TPSShooter
         }
 
         /// <summary>
+        /// Host 把受击来源发给该玩家本机，用于方向提示。血量仍走 SyncVar。
+        /// </summary>
+        /// <param name="shooterPosition">攻击来源世界坐标。</param>
+        public void ServerNotifyHit(Vector3 shooterPosition)
+        {
+            if (!isServer)
+                return;
+
+            TargetNotifyHit(shooterPosition);
+        }
+
+        [TargetRpc]
+        private void TargetNotifyHit(Vector3 shooterPosition)
+        {
+            if (isServer)
+                return;
+
+            if (player == null)
+                player = ResolvePlayer();
+            if (player != null)
+                player.PlayNetworkHitFeedback(shooterPosition);
+        }
+
+        /// <summary>
+        /// 本机开火后同步弹道给其他端。
+        /// </summary>
+        public void NotifyShotVisual(Vector3 position, Quaternion rotation)
+        {
+            if (isServer)
+                RpcPlayShot(position, rotation);
+            else
+                CmdPlayShot(position, rotation);
+        }
+
+        [Command]
+        private void CmdPlayShot(Vector3 position, Quaternion rotation)
+        {
+            RpcPlayShot(position, rotation);
+        }
+
+        [ClientRpc]
+        private void RpcPlayShot(Vector3 position, Quaternion rotation)
+        {
+            if (isOwned)
+                return;
+
+            PlayReplicatedShot(position, rotation);
+        }
+
+        private void PlayReplicatedShot(Vector3 position, Quaternion rotation)
+        {
+            if (player == null)
+                player = ResolvePlayer();
+            if (player == null || player.CurrentWeaponBehaviour == null)
+                return;
+
+            player.CurrentWeaponBehaviour.PlayReplicatedShot(position, rotation);
+        }
+
+        /// <summary>
         /// SyncVar 回调：把 Host 血量应用到客户端玩家。
         /// </summary>
         /// <param name="oldHp">同步前的血量。</param>
@@ -66,6 +141,10 @@ namespace TPSShooter
         private void OnSyncedHpChanged(float oldHp, float newHp)
         {
             if (isServer || player == null)
+                return;
+
+            // 与 syncedAlive 对照：仍存活时忽略 0 血的初始脏数据
+            if (newHp <= 0 && syncedAlive)
                 return;
 
             player.ApplyNetworkHp(newHp);
@@ -110,6 +189,7 @@ namespace TPSShooter
 
             ConfigureTransformAndAnimator();
             PlayerRegistry.SetLocal(player);
+            EnableLocalPresentation();
             if (player != null)
             {
                 player.EnableLocalControl();
@@ -130,6 +210,9 @@ namespace TPSShooter
                 if (elements[i] != null)
                     elements[i].ShowForLateSpawn();
             }
+
+            // 场景里的 PlayerCanvas 在 Mirror 切场景时可能已错过 SceneLoaded，加入端要补一次
+            LightDev.UI.CanvasManager.ShowLateJoinHud();
         }
 
         public override void OnStopClient()
@@ -167,6 +250,28 @@ namespace TPSShooter
             networkAnimator.clientAuthority = true;
             if (networkAnimator.animator == null)
                 networkAnimator.animator = player.GetComponent<Animator>();
+        }
+
+        /// <summary>
+        /// 本机玩家若在 OnStartClient 里被当成远端关掉了 Canvas/相机，这里重新打开。
+        /// </summary>
+        private void EnableLocalPresentation()
+        {
+            Camera[] cameras = GetComponentsInChildren<Camera>(true);
+            for (int i = 0; i < cameras.Length; i++)
+                cameras[i].enabled = true;
+
+            TPSCamera[] tpsCameras = GetComponentsInChildren<TPSCamera>(true);
+            for (int i = 0; i < tpsCameras.Length; i++)
+                tpsCameras[i].enabled = true;
+
+            Canvas[] canvases = GetComponentsInChildren<Canvas>(true);
+            for (int i = 0; i < canvases.Length; i++)
+                canvases[i].gameObject.SetActive(true);
+
+            DesktopInput[] desktopInputs = GetComponentsInChildren<DesktopInput>(true);
+            for (int i = 0; i < desktopInputs.Length; i++)
+                desktopInputs[i].enabled = true;
         }
 
         /// <summary>

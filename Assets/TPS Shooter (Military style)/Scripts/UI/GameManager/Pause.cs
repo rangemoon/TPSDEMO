@@ -25,6 +25,13 @@ namespace TPSShooter.UI
       Events.GameReplay -= Hide;
     }
 
+    /// <summary>
+    /// 暂停面板不能由联机补 HUD 打开，只响应 GamePaused。
+    /// </summary>
+    public override void ShowForLateSpawn()
+    {
+    }
+
     public void OnResume()
     {
       Events.GameResumeRequested.Call();

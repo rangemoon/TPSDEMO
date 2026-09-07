@@ -30,8 +30,10 @@ namespace TPSShooter.UI
       Events.GameLoadHomeScene += Hide;
       Events.GameReplay += Hide;
 
-      replayButton.onClick.AddListener(OnReplay);
-      homeButton.onClick.AddListener(OnLoadHome);
+      if (replayButton != null)
+        replayButton.onClick.AddListener(OnReplay);
+      if (homeButton != null)
+        homeButton.onClick.AddListener(OnLoadHome);
     }
 
     public override void Unsubscribe()
@@ -42,34 +44,64 @@ namespace TPSShooter.UI
       Events.GameLoadHomeScene -= Hide;
       Events.GameReplay -= Hide;
 
-      replayButton.onClick.RemoveListener(OnReplay);
-      homeButton.onClick.RemoveListener(OnLoadHome);
+      if (replayButton != null)
+        replayButton.onClick.RemoveListener(OnReplay);
+      if (homeButton != null)
+        homeButton.onClick.RemoveListener(OnLoadHome);
     }
 
     private void OnGameFinished(bool win)
     {
       isWin = win;
+      EnsureHierarchyActive();
       Show();
+    }
+
+    /// <summary>
+    /// 结算面板可能挂在被 CanvasManager 关掉的物体下，Show 前先把祖先激活。
+    /// </summary>
+    private void EnsureHierarchyActive()
+    {
+      Transform current = transform;
+      while (current != null)
+      {
+        if (!current.gameObject.activeSelf)
+          current.gameObject.SetActive(true);
+        current = current.parent;
+      }
+    }
+
+    /// <summary>
+    /// 结算面板不能由联机补 HUD 打开，只响应 GameFinishedResult。
+    /// </summary>
+    public override void ShowForLateSpawn()
+    {
     }
 
     protected override void OnStartShowing()
     {
-      victoryPanel.SetActive(isWin);
-      defeatPanel.SetActive(!isWin);
-      continuePanel.SetActive(false);
+      if (victoryPanel != null)
+        victoryPanel.SetActive(isWin);
+      if (defeatPanel != null)
+        defeatPanel.SetActive(!isWin);
+      if (continuePanel != null)
+        continuePanel.SetActive(false);
 
       DelayAction(resultShowDelay, () =>
       {
         if (!gameObject.activeSelf) return;
         HideGameOverPanel();
-        continuePanel.SetActive(true);
+        if (continuePanel != null)
+          continuePanel.SetActive(true);
       });
     }
 
     private void HideGameOverPanel()
     {
-      victoryPanel.SetActive(false);
-      defeatPanel.SetActive(false);
+      if (victoryPanel != null)
+        victoryPanel.SetActive(false);
+      if (defeatPanel != null)
+        defeatPanel.SetActive(false);
     }
 
     public void OnReplay()

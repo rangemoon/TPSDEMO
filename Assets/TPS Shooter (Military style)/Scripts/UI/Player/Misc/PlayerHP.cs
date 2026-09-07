@@ -29,10 +29,21 @@ namespace TPSShooter.UI
       Events.PlayerChangedHP -= OnPlayerChangedHP;
     }
 
+    public override void ShowForLateSpawn()
+    {
+      Show();
+      OnPlayerChangedHP();
+    }
+
+    protected override void OnStartShowing()
+    {
+      OnPlayerChangedHP();
+    }
+
     private void OnPlayerChangedHP()
     {
       var player = PlayerBehaviour.GetInstance();
-      if (player == null)
+      if (player == null || healthBar == null)
         return;
 
       healthBar.fillAmount = player.GetCurrentHP() / player.GetMaxHP();
