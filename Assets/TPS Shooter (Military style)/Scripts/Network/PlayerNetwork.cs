@@ -178,7 +178,10 @@ namespace TPSShooter
             {
                 CharacterController characterController = player.GetComponent<CharacterController>();
                 if (characterController != null)
+                {
                     characterController.enabled = false;
+                    AddRemoteHitCollider(characterController);
+                }
 
                 Animator animator = player.GetComponent<Animator>();
                 if (animator != null)
@@ -206,6 +209,28 @@ namespace TPSShooter
             DesktopInput[] desktopInputs = GetComponentsInChildren<DesktopInput>(true);
             for (int i = 0; i < desktopInputs.Length; i++)
                 desktopInputs[i].enabled = false;
+        }
+
+        /// <summary>
+        /// 远端玩家的 CharacterController 禁用后没有碰撞体，敌人子弹与近战会打不中它。
+        /// 补一个等大的胶囊碰撞体（kinematic，不参与本地物理模拟）专门用于被弹检测。
+        /// </summary>
+        /// <param name="source">被禁用的 CharacterController，用于复制胶囊尺寸。</param>
+        private void AddRemoteHitCollider(CharacterController source)
+        {
+            if (source.GetComponent<CapsuleCollider>() != null)
+                return;
+
+            CapsuleCollider hitCollider = source.gameObject.AddComponent<CapsuleCollider>();
+            hitCollider.center = source.center;
+            hitCollider.height = source.height;
+            hitCollider.radius = source.radius;
+
+            Rigidbody hitBody = source.GetComponent<Rigidbody>();
+            if (hitBody == null)
+                hitBody = source.gameObject.AddComponent<Rigidbody>();
+            hitBody.isKinematic = true;
+            hitBody.useGravity = false;
         }
     }
 }

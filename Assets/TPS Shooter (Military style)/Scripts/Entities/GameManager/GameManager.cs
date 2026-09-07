@@ -107,11 +107,13 @@ namespace TPSShooter
 
         /// <summary>
         /// 任意玩家死亡时检查是否全灭；仅全灭才判定失败。
+        /// 联机时结束由 Host 裁决并广播，客户端不依据本地注册表自行判定。
         /// </summary>
         /// <param name="player">刚刚死亡的玩家。</param>
         private void OnAnyPlayerDied(PlayerBehaviour player)
         {
             if (IsGameFinished) return;
+            if (GameNetwork.IsClientOnly) return;
             if (PlayerRegistry.HasAlivePlayer()) return;
 
             FinishGame(false);

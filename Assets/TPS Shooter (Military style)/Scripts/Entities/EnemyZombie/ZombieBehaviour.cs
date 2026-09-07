@@ -125,6 +125,10 @@ namespace TPSShooter
 
     private void OnAttack() // Animation Event
     {
+      // 动画事件在客户端也会触发；伤害只由 Host 结算，避免客户端本地扣血导致两端状态不一致
+      if (GameNetwork.IsClientOnly)
+        return;
+
       Collider[] colliders = Physics.OverlapSphere(
         transform.position + transform.rotation * AttackSphereOffset,
         AttackSphereRadius,
@@ -349,6 +353,7 @@ namespace TPSShooter
     private Vector3 visionPos;
     private Vector3 playerPos;
     private RaycastHit playerRaycastHit;
+    private bool warnedVisionPositionMissing;
     private bool IsPlayerNoticedByRaycast()
     {
       if (!HasCombatTarget())
@@ -362,9 +367,22 @@ namespace TPSShooter
       cachedRaycastFrame = Time.frameCount;
       cachedIsPlayerRaycasted = false;
 
-      visionPos = visionPosition.position;
+      if (visionPosition == null)
+      {
+        // 视觉锚点未配置时退化为自身胸口位置，避免敌人因 NRE 卡死在 Idle 状态
+        if (!warnedVisionPositionMissing)
+        {
+          warnedVisionPositionMissing = true;
+          Debug.LogWarning(name + ": visionPosition 未配置，视线检测退化为自身位置。请在预制体 Inspector 中重新绑定。", this);
+        }
+        visionPos = transform.position + new Vector3(0, 1, 0);
+      }
+      else
+      {
+        visionPos = visionPosition.position;
+      }
       playerPos = player.GetPosition() + new Vector3(0, 1, 0);
-      if (Physics.Linecast(visionPosition.position, playerPos, out playerRaycastHit, visionLayers))
+      if (Physics.Linecast(visionPos, playerPos, out playerRaycastHit, visionLayers))
       {
         if (playerRaycastHit.collider.GetComponentInParent<PlayerBehaviour>() || (playerRaycastHit.collider.gameObject.GetComponentInParent<Vehicle>() && player.IsDrivingVehicle))
         {

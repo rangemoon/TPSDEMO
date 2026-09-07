@@ -114,10 +114,19 @@ namespace TPSShooter
         /// <summary>
         /// Mirror 会在进 Play 时关掉带 NetworkIdentity 的场景 FullPlayer，单机先没有监听器。
         /// 在本机玩家恢复前先挂一个兜底监听器，避免每帧刷屏。
+        /// 场景里已有可用监听器（如 Menu 的主相机）时不开兜底，否则报双监听器警告。
         /// </summary>
         private void EnsureFallbackAudioListener()
         {
             AudioListener fallback = GetComponent<AudioListener>();
+            AudioListener existing = FindFirstObjectByType<AudioListener>(FindObjectsInactive.Exclude);
+            if (existing != null && existing.enabled && existing != fallback)
+            {
+                if (fallback != null)
+                    fallback.enabled = false;
+                return;
+            }
+
             if (fallback == null)
                 fallback = gameObject.AddComponent<AudioListener>();
             fallback.enabled = true;

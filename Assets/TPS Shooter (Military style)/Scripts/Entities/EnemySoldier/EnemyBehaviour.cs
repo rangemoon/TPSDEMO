@@ -394,6 +394,7 @@ namespace TPSShooter
         private RaycastHit playerRaycastHit;
         private Vector3 playerPos;
         private Vector3 visionPos;
+        private bool warnedVisionPositionMissing;
         private bool IsPlayerNoticedByRaycast()
         {
             if (!HasCombatTarget())
@@ -407,7 +408,20 @@ namespace TPSShooter
             cachedRaycastFrame = Time.frameCount;
             cachedIsPlayerRaycasted = false;
             playerPos = player.GetPosition() + new Vector3(0, 1, 0);
-            visionPos = VisionSettings.VisionPosition.position;
+            if (VisionSettings.VisionPosition == null)
+            {
+                // 视觉锚点未配置时退化为自身胸口位置，避免敌人因 NRE 卡死在 Idle 状态
+                if (!warnedVisionPositionMissing)
+                {
+                    warnedVisionPositionMissing = true;
+                    Debug.LogWarning(name + ": VisionSettings.VisionPosition 未配置，视线检测退化为自身位置。请在预制体 Inspector 中重新绑定。", this);
+                }
+                visionPos = transform.position + new Vector3(0, 1, 0);
+            }
+            else
+            {
+                visionPos = VisionSettings.VisionPosition.position;
+            }
             if (Physics.Linecast(visionPos, playerPos, out playerRaycastHit, VisionSettings.VisionLayers))
             {
                 if (playerRaycastHit.collider.GetComponentInParent<PlayerBehaviour>()
