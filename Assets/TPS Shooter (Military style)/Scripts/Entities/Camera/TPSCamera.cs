@@ -172,6 +172,11 @@ namespace TPSShooter
       if (localPlayer == null)
         return;
 
+      // 开火是全局事件，远端玩家代理上的 TPSCamera 也会收到；
+      // 只有属于本机玩家的相机才启动抖动 tween，否则代理被 Mirror 销毁时进行中的 tween 会访问已销毁的 Transform
+      if (GetComponentInParent<PlayerBehaviour>() != localPlayer)
+        return;
+
       var weapon = localPlayer.CurrentWeaponBehaviour;
       if (weapon == null)
         return;
@@ -195,7 +200,7 @@ namespace TPSShooter
       Sequence(
         cameraTransform.DOLocalRotate(new Vector3(0, 0, strength), duration).SetEase(Ease.OutSine),
         cameraTransform.DOLocalRotate(new Vector3(0, 0, 0), duration).SetEase(Ease.InSine)
-      ).stringId = FireShakeSequenceID;
+      ).SetLink(cameraTransform.gameObject).stringId = FireShakeSequenceID;
     }
 
     private void FireCameraDeviation(PlayerWeapon weapon)
