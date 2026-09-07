@@ -135,7 +135,7 @@ Enemy / Zombie
 | `Assets/TPS Shooter (Military style)/Scripts/Network/PlayerNetwork.cs` | 玩家 NetworkBehaviour，找子物体 PlayerBehaviour |
 | `Assets/TPS Shooter (Military style)/Scripts/Network/EnemyNetwork.cs` | 士兵敌人网络同步与伤害 Command |
 | `Assets/TPS Shooter (Military style)/Scripts/Network/ZombieNetwork.cs` | 僵尸同上 |
-| `Assets/TPS Shooter (Military style)/Editor/Network/FullPlayerNetworkSetup.cs` | 编辑器菜单 |
+| ~~`Assets/TPS Shooter (Military style)/Editor/Network/FullPlayerNetworkSetup.cs`~~ | 编辑器菜单（**已于 2026-09-07 删除**，见提交 `75e0c94`，配置结果已固化进资产） |
 
 ### 必须改过的现有结构
 
@@ -160,7 +160,11 @@ Enemy / Zombie
 
 ---
 
-## 5. 编辑器菜单
+## 5. 编辑器菜单（已删除，仅作历史记录）
+
+> 2026-09-07：`Editor/Network/` 下全部一次性菜单脚本（FullPlayerNetworkSetup / EnemyNetworkSetup / LanDiagnostics）已删除（提交 `75e0c94`）。
+> 所有配置结果（FullPlayer/敌人预制体网络组件、Zombie 残留清理、spawnPrefabs 注册）已固化在资产文件里，**无需再跑任何菜单**。
+> 如需重新配置，从 git 历史恢复对应脚本即可。
 
 - **TPS Shooter / Setup FullPlayer For LAN**  
   给 `FullPlayer.prefab` 加 NI / NetworkTransform / NetworkAnimator / PlayerNetwork，并赋给当前场景 `playerPrefab`。
