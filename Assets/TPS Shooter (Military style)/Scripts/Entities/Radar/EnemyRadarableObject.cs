@@ -17,9 +17,15 @@ namespace TPSShooter
       Events.EnemyKilled += OnEnemyKilled;
     }
 
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
       Events.EnemyKilled -= OnEnemyKilled;
+      base.OnDestroy();
+    }
+
+    protected override bool CanShowOnRadar()
+    {
+      return enemy != null && enemy.GetHP() > 0;
     }
 
     private void OnEnemyKilled(EnemyBehaviour enemy)

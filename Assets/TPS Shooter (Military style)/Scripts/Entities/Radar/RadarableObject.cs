@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace TPSShooter.UI
@@ -8,6 +9,8 @@ namespace TPSShooter.UI
   {
     public GameObject RadarableImagePrefab;
 
+    private static readonly List<RadarableObject> pendingObjects = new List<RadarableObject>();
+
     private Radar _radar;
 
     // Created GameObject from prefab
@@ -15,8 +18,14 @@ namespace TPSShooter.UI
 
     // Used by Radar when it defines local position of GameObject created from Prefab
     private RectTransform _createdRectTransform;
+    private bool _initialized;
+    private bool _removedFromRadar;
+
     public void SetRectLocalPosition(Vector3 position)
     {
+      if (_createdRectTransform == null)
+        return;
+
       _createdRectTransform.localPosition = position;
     }
 
@@ -33,15 +42,64 @@ namespace TPSShooter.UI
 
     private void Start()
     {
-      InitializeRadarableObject();
+      TryInitializeRadarableObject();
     }
 
-    private void InitializeRadarableObject()
+    private void Update()
     {
-      _radar = Radar.GetInstance();
-      if (_radar == null)
+      if (_initialized || _removedFromRadar)
+        return;
+
+      TryInitializeRadarableObject();
+    }
+
+    protected virtual void OnDestroy()
+    {
+      DestroyRadarableObject();
+    }
+
+    /// <summary>
+    /// Radar HUD 可能晚于敌人激活，把还没登记的对象补登记上去。
+    /// </summary>
+    public static void BindPendingToRadar()
+    {
+      if (pendingObjects.Count == 0)
+        return;
+
+      RadarableObject[] pending = pendingObjects.ToArray();
+      pendingObjects.Clear();
+      for (int i = 0; i < pending.Length; i++)
       {
-        Debug.LogError("No radar on the scene.");
+        if (pending[i] != null)
+          pending[i].TryInitializeRadarableObject();
+      }
+    }
+
+    private void TryInitializeRadarableObject()
+    {
+      if (_initialized || _removedFromRadar)
+        return;
+
+      if (!CanShowOnRadar())
+      {
+        _removedFromRadar = true;
+        pendingObjects.Remove(this);
+        return;
+      }
+
+      _radar = Radar.GetInstance();
+      if (_radar == null || _radar.GetRadarImage() == null)
+      {
+        if (!pendingObjects.Contains(this))
+          pendingObjects.Add(this);
+        return;
+      }
+
+      pendingObjects.Remove(this);
+
+      if (RadarableImagePrefab == null)
+      {
+        Debug.LogError("RadarableObject: RadarableImagePrefab is missing.", this);
         return;
       }
 
@@ -54,13 +112,40 @@ namespace TPSShooter.UI
       ImageHalfHeight = RadarableImagePrefab.GetComponent<Image>().rectTransform.rect.height / 2;
 
       _radar.AddRadarableObject(this);
+      _initialized = true;
     }
 
+    /// <summary>
+    /// 联机反序列化可能在 Start 之前就触发死亡，图标和 Radar 都还不存在。
+    /// </summary>
     protected void DestroyRadarableObject()
     {
-      Destroy(_radarableImgObject);
+      _removedFromRadar = true;
+      pendingObjects.Remove(this);
 
-      _radar.RemoveRadarableObject(this);
+      if (_radarableImgObject != null)
+      {
+        Destroy(_radarableImgObject);
+        _radarableImgObject = null;
+      }
+
+      _createdRectTransform = null;
+
+      if (_radar != null)
+      {
+        _radar.RemoveRadarableObject(this);
+        _radar = null;
+      }
+
+      _initialized = false;
+    }
+
+    /// <summary>
+    /// 子类在实体已死亡时返回 false，避免加入端把尸体登记到小地图。
+    /// </summary>
+    protected virtual bool CanShowOnRadar()
+    {
+      return true;
     }
   }
 }

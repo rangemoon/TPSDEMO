@@ -24,13 +24,35 @@ namespace TPSShooter.UI
 
     private void Awake()
     {
-      instance = this;
-      _radarImageHalfHeight = radarImg.rectTransform.rect.height / 2;
+      BindAsActiveRadar();
+    }
+
+    private void OnEnable()
+    {
+      BindAsActiveRadar();
+    }
+
+    private void OnDestroy()
+    {
+      if (instance == this)
+        instance = null;
     }
 
     private void Start()
     {
       RefreshPlayer();
+    }
+
+    /// <summary>
+    /// HUD 默认先被 CanvasManager 关掉，敌人可能已经排队等雷达。
+    /// </summary>
+    private void BindAsActiveRadar()
+    {
+      instance = this;
+      if (radarImg != null)
+        _radarImageHalfHeight = radarImg.rectTransform.rect.height / 2;
+
+      RadarableObject.BindPendingToRadar();
     }
 
     public override void Subscribe()
@@ -70,8 +92,15 @@ namespace TPSShooter.UI
 
     private void UpdateRadarableObjectsPositions()
     {
-      foreach (RadarableObject radarableObj in _radarableObjects)
+      for (int i = _radarableObjects.Count - 1; i >= 0; i--)
       {
+        RadarableObject radarableObj = _radarableObjects[i];
+        if (radarableObj == null)
+        {
+          _radarableObjects.RemoveAt(i);
+          continue;
+        }
+
         Vector3 radarPos = (radarableObj.transform.position - player.position);
         float distToObject = Vector3.Distance(player.position, radarableObj.transform.position);
 
@@ -90,6 +119,9 @@ namespace TPSShooter.UI
 
     public void AddRadarableObject(RadarableObject obj)
     {
+      if (obj == null || _radarableObjects.Contains(obj))
+        return;
+
       _radarableObjects.Add(obj);
     }
 
