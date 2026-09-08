@@ -63,6 +63,7 @@ namespace TPSShooter.UI.Menu
 
         private void UpdateInfo()
         {
+            // 菜单不再锁武器，数组里的每一把都可以选。
             string weaponTag = weapons[weaponIndex].tag;
             infoText.text = weaponTag;
             SaveLoad.WeaponTag = weaponTag;

@@ -2,6 +2,7 @@ using System;
 using System.Net;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 
 namespace Mirror.Discovery
 {
@@ -38,7 +39,8 @@ namespace Mirror.Discovery
                 return new ServerResponse
                 {
                     serverId = ServerId,
-                    uri = transport.ServerUri()
+                    uri = transport.ServerUri(),
+                    sceneName = SceneManager.GetActiveScene().name
                 };
             }
             catch (NotImplementedException)

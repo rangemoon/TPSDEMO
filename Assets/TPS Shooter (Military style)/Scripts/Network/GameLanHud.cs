@@ -7,23 +7,30 @@ using UnityEngine.SceneManagement;
 namespace TPSShooter
 {
     /// <summary>
-    /// 局域网调试 HUD：创建 Host、按 IP 加入、搜索房间。正式菜单可替换此组件。
+    /// 局域网调试 HUD，默认关闭。正式进房走菜单 RoomLobby。
     /// </summary>
     [RequireComponent(typeof(GameNetworkManager))]
     [RequireComponent(typeof(NetworkDiscovery))]
     public class GameLanHud : MonoBehaviour
     {
         [SerializeField] private KeyCode toggleKey = KeyCode.F1;
+        [SerializeField] private bool enableDebugHud;
 
         private NetworkDiscovery networkDiscovery;
         private string address = "localhost";
         private Uri discoveredUri;
-        private bool visible = true;
+        private bool visible;
 
         private void Awake()
         {
             networkDiscovery = GetComponent<NetworkDiscovery>();
             networkDiscovery.OnServerFound.AddListener(OnServerFound);
+
+            // 正式大厅已替换 F1 调试 HUD，默认关闭。
+            if (!enableDebugHud)
+                enabled = false;
+            else
+                visible = true;
         }
 
         private void OnDestroy()

@@ -88,6 +88,51 @@ namespace TPSShooter
         }
 
         /// <summary>
+        /// 按 IP 加入已开房间，随后加载房主当前关卡。
+        /// </summary>
+        /// <param name="address">主机地址，本机第二进程填 localhost。</param>
+        public static void JoinByAddress(string address)
+        {
+            GameNetworkManager manager = singleton;
+            if (manager == null)
+            {
+                Debug.LogError("GameNetworkManager: 菜单场景缺少 GameNetworkManager。");
+                return;
+            }
+
+            if (manager.networkDiscovery != null)
+                manager.networkDiscovery.StopDiscovery();
+
+            manager.networkAddress = address;
+            manager.StartClient();
+        }
+
+        /// <summary>
+        /// 加入局域网发现到的房间。
+        /// </summary>
+        /// <param name="uri">发现结果里的服务器地址。</param>
+        public static void JoinByUri(System.Uri uri)
+        {
+            GameNetworkManager manager = singleton;
+            if (manager == null)
+            {
+                Debug.LogError("GameNetworkManager: 菜单场景缺少 GameNetworkManager。");
+                return;
+            }
+
+            if (uri == null)
+            {
+                Debug.LogError("GameNetworkManager: 加入房间失败，地址为空。");
+                return;
+            }
+
+            if (manager.networkDiscovery != null)
+                manager.networkDiscovery.StopDiscovery();
+
+            manager.StartClient(uri);
+        }
+
+        /// <summary>
         /// 从菜单进关后重新捕获场景玩家：单机恢复操控，联机则关掉占位玩家。
         /// </summary>
         private void HandleGameplaySceneLoaded(Scene scene, LoadSceneMode mode)

@@ -21,12 +21,23 @@ namespace TPSShooter.UI.Menu
 
         public override void Subscribe()
         {
-            Events.RequestMenuLocation += Show;
+            Events.RequestMenuLocation += OnRequestShow;
         }
 
         public override void Unsubscribe()
         {
-            Events.RequestMenuLocation -= Show;
+            Events.RequestMenuLocation -= OnRequestShow;
+        }
+
+        /// <summary>
+        /// 正式大厅 RoomLobby 在场时由它接手选图开房，旧选关页不再弹出。
+        /// </summary>
+        private void OnRequestShow()
+        {
+            if (RoomLobby.IsPresent)
+                return;
+
+            Show();
         }
 
         protected override void OnStartShowing()
@@ -34,11 +45,12 @@ namespace TPSShooter.UI.Menu
             UpdateLocationInfo();
         }
 
+        /// <summary>
+        /// 旧选关页的 Play 也改为创建房间，避免再走单机 Download 进关。
+        /// </summary>
         public void OnPlay()
         {
-            Events.MenuClickSound.Call();
-            Events.RequestMenuDownloading.Call(locations[locationIndex].sceneIndex);
-            Hide();
+            OnHostPlay();
         }
 
         /// <summary>

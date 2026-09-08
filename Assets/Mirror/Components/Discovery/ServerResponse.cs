@@ -14,5 +14,10 @@ namespace Mirror.Discovery
 
         // Prevent duplicate server appearance when a connection can be made via LAN on multiple NICs
         public long serverId;
+
+        /// <summary>
+        /// 房主当前场景名，加入列表用来显示地图。
+        /// </summary>
+        public string sceneName;
     }
 }

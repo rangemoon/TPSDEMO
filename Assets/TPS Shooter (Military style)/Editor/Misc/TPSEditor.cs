@@ -75,6 +75,12 @@ namespace TPSShooter
       MatchOverlayPrefabBuilder.SetupInGameScenes();
     }
 
+    [MenuItem("TPS Shooter/Setup Room Lobby In Menu", false, 26)]
+    private static void SetupRoomLobbyInMenu()
+    {
+      RoomLobbyPrefabBuilder.SetupInMenuScene();
+    }
+
     [MenuItem("TPS Shooter/Clear Saved Data (PlayerPrefs)", false, 500)]
     private static void ClearAllData()
     {

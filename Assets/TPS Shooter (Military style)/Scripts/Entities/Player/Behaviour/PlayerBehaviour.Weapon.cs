@@ -349,7 +349,7 @@ namespace TPSShooter
                 PlayerWeapon selectedWeapon = player.weaponSettings.AllWeapons[selectedIndex];
                 if (selectedWeapon == null) return;
 
-                // Deactivate all weapons first
+                // 菜单已解锁全部武器：只切换当前装备，不清空其它槽位。
                 for (int i = 0; i < player.weaponSettings.AllWeapons.Length; ++i)
                 {
                     var weapon = player.weaponSettings.AllWeapons[i];
@@ -357,16 +357,8 @@ namespace TPSShooter
                         weapon.gameObject.SetActive(false);
                 }
 
-                // Clear all weapon slots, keep only the selected weapon in slot 0
-                for (int i = 0; i < player.weaponSettings.AllWeapons.Length; ++i)
-                {
-                    player.weaponSettings.AllWeapons[i] = null;
-                }
-                player.weaponSettings.AllWeapons[0] = selectedWeapon;
-
-                // Force set the selected weapon as current (skip animation)
                 player.weaponSettings.CurrentWeapon = selectedWeapon;
-                player.CurrentWeaponIndex = 0;
+                player.CurrentWeaponIndex = selectedIndex;
                 selectedWeapon.gameObject.SetActive(true);
             }
         }

@@ -31,7 +31,7 @@ namespace LightDev.UI
 
     /// <summary>
     /// 联机后加入的客户端会错过 SceneLoaded，把已订阅的 HUD 再 Show 一次。
-    /// Finish/Pause 已重写 ShowForLateSpawn 为空，不会被误打开。
+    /// Pause 与菜单大厅已重写 ShowForLateSpawn 为空，不会被误打开。
     /// </summary>
     public static void ShowLateJoinHud()
     {
