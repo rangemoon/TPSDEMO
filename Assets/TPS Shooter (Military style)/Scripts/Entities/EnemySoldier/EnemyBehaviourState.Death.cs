@@ -14,8 +14,10 @@ namespace TPSShooter
 
       public override void OnEnter()
       {
-        host.characterController.enabled = false;
-        host.navmeshAgent.enabled = false;
+        if (host.characterController != null)
+          host.characterController.enabled = false;
+        if (host.navmeshAgent != null)
+          host.navmeshAgent.enabled = false;
 
 #if UNITY_ANDROID || UNITY_IOS
         // Mobile: skip ragdoll physics, always use death animation for performance
@@ -25,9 +27,11 @@ namespace TPSShooter
         {
           host.animator.enabled = false;
 
-          // Use cached rigidbodies instead of GetComponentsInChildren
-          foreach (Rigidbody b in host.cachedRigidbodies)
-            b.isKinematic = false;
+          if (host.cachedRigidbodies != null)
+          {
+            foreach (Rigidbody b in host.cachedRigidbodies)
+              b.isKinematic = false;
+          }
         }
         else
         {
@@ -36,12 +40,17 @@ namespace TPSShooter
 #endif
 
         // unattach gameObjects
-        for (int i = 0; i < host.DeathSettings.Items.Length; i++)
+        if (host.DeathSettings.Items != null)
         {
-          host.DeathSettings.Items[i].parent = null;
-          var rb = host.DeathSettings.Items[i].GetComponent<Rigidbody>();
-          if (rb != null) rb.isKinematic = false;
-          Destroy(host.DeathSettings.Items[i].gameObject, host.DeathSettings.EnemyDieTime);
+          for (int i = 0; i < host.DeathSettings.Items.Length; i++)
+          {
+            if (host.DeathSettings.Items[i] == null)
+              continue;
+            host.DeathSettings.Items[i].parent = null;
+            var rb = host.DeathSettings.Items[i].GetComponent<Rigidbody>();
+            if (rb != null) rb.isKinematic = false;
+            Destroy(host.DeathSettings.Items[i].gameObject, host.DeathSettings.EnemyDieTime);
+          }
         }
 
         // Event
@@ -50,11 +59,13 @@ namespace TPSShooter
 
         // Blood effects are now pooled and auto-despawn via PooledLifetime, no manual Destroy needed
 
-        Destroy(host.gameObject, host.DeathSettings.EnemyDieTime);
+        host.ScheduleDespawn(host.DeathSettings.EnemyDieTime);
       }
 
       private void PlayDeathAnimation()
       {
+        if (host.animator == null)
+          return;
         host.SetForwardAnimatorParameter(0);
         host.SetStrafeAnimatorParameter(0);
         host.animator.SetTrigger(host.AnimatorParameters.DieHash);

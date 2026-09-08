@@ -77,10 +77,32 @@ namespace TPSShooter
 
         /// <summary>
         /// 是否仍有至少一名可计入对局的存活玩家。
-        /// 忽略 null、未激活、已死亡；联机时再忽略尚未分配 netId 的场景占位。
+        /// Host 上优先看 Mirror 连接上的玩家，避免注册表短暂漏掉房主时误判全灭。
+        /// 离线仍走注册表；忽略 null、未激活、已死亡，以及尚未分配 netId 的场景占位。
         /// </summary>
         public static bool HasAlivePlayer()
         {
+            if (NetworkServer.active && NetworkServer.connections.Count > 0)
+            {
+                bool sawPlayer = false;
+                foreach (NetworkConnectionToClient conn in NetworkServer.connections.Values)
+                {
+                    if (conn == null || conn.identity == null)
+                        continue;
+
+                    PlayerBehaviour player = conn.identity.GetComponentInChildren<PlayerBehaviour>(true);
+                    if (player == null)
+                        continue;
+
+                    sawPlayer = true;
+                    if (player.IsAlive)
+                        return true;
+                }
+
+                if (sawPlayer)
+                    return false;
+            }
+
             for (int i = 0; i < players.Count; i++)
             {
                 if (IsCountableAlive(players[i]))

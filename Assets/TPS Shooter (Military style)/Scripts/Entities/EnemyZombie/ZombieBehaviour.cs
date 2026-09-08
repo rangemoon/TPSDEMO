@@ -83,23 +83,8 @@ namespace TPSShooter
 
     private void Start()
     {
-      idleState = new IdleState(this);
-      patrolState = new PatrolState(this);
-      searchState = new SearchState(this);
-      chaseState = new ChaseState(this);
-      attackState = new AttackState(this);
-      deathState = new DeathState(this);
-      playerDiedState = new PlayerDiedState(this);
-
-      animator = GetComponent<Animator>();
-      characterController = GetComponent<CharacterController>();
-      navmeshAgent = GetComponent<NavMeshAgent>();
-
+      EnsureAIInitialized();
       RefreshCombatTarget();
-
-      animator.applyRootMotion = false;
-      navmeshAgent.autoBraking = false;
-
       InitializeStartState();
 
       EnemyRegistry.Register(this);
@@ -122,7 +107,8 @@ namespace TPSShooter
       if (Time.frameCount % 15 == 0)
         RefreshCombatTarget();
 
-      currentState.OnUpdate();
+      if (currentState != null)
+        currentState.OnUpdate();
       UpdateGravity();
     }
 
@@ -249,6 +235,7 @@ namespace TPSShooter
     /// <param name="networkHp">Host 同步的当前血量。</param>
     public void ApplyNetworkHp(float networkHp)
     {
+      EnsureAIInitialized();
       hp = networkHp;
       onHpChanged?.Invoke();
 
@@ -261,9 +248,23 @@ namespace TPSShooter
     /// </summary>
     public void ApplyNetworkDeath()
     {
-      if (currentState == deathState) return;
+      EnsureAIInitialized();
+      if (currentState == deathState)
+        return;
 
       ChangeState(deathState);
+    }
+
+    /// <summary>
+    /// 死亡动画播完后销毁。加入端不能本地 Destroy 联网僵尸。
+    /// </summary>
+    /// <param name="delay">延迟秒数。</param>
+    internal void ScheduleDespawn(float delay)
+    {
+      if (GameNetwork.IsClientOnly)
+        return;
+
+      Destroy(gameObject, delay);
     }
 
     private void UpdateGravity()
@@ -356,8 +357,44 @@ namespace TPSShooter
       ApplyServerGrenadeKill();
     }
 
+    /// <summary>
+    /// 同步血量可能早于 Start：先建好状态机，避免加入端还没初始化就被写成 Idle。
+    /// </summary>
+    private void EnsureAIInitialized()
+    {
+      if (deathState != null)
+        return;
+
+      idleState = new IdleState(this);
+      patrolState = new PatrolState(this);
+      searchState = new SearchState(this);
+      chaseState = new ChaseState(this);
+      attackState = new AttackState(this);
+      deathState = new DeathState(this);
+      playerDiedState = new PlayerDiedState(this);
+
+      animator = GetComponent<Animator>();
+      characterController = GetComponent<CharacterController>();
+      navmeshAgent = GetComponent<NavMeshAgent>();
+      if (animator != null)
+        animator.applyRootMotion = false;
+      if (navmeshAgent != null)
+        navmeshAgent.autoBraking = false;
+    }
+
     private void InitializeStartState()
     {
+      EnsureAIInitialized();
+      if (currentState == deathState)
+        return;
+
+      if (hp <= 0)
+      {
+        currentState = deathState;
+        currentState.OnEnter();
+        return;
+      }
+
       if (HasWaypoints())
       {
         currentState = patrolState;
@@ -371,9 +408,11 @@ namespace TPSShooter
 
     private void ChangeState(ZombieBehaviourState state)
     {
-      if (currentState == state) return;
+      if (state == null || currentState == state)
+        return;
 
-      currentState.OnExit();
+      if (currentState != null)
+        currentState.OnExit();
       currentState = state;
       currentState.OnEnter();
     }
@@ -387,13 +426,12 @@ namespace TPSShooter
 
     private void StopNavMeshAgent()
     {
-      navmeshAgent.isStopped = true;
-      navmeshAgent.velocity = Vector3.zero;
+      NavMeshAgentUtil.StopIfReady(navmeshAgent);
     }
 
     private void ResumeNavMeshAgent()
     {
-      navmeshAgent.isStopped = false;
+      NavMeshAgentUtil.ResumeIfReady(navmeshAgent);
     }
 
     private float GetDistanceToPlayer()

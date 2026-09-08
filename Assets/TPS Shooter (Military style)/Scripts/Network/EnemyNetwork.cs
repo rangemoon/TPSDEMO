@@ -45,6 +45,8 @@ namespace TPSShooter
                 return;
 
             DisableClientSimulation();
+            if (enemy != null)
+                enemy.ApplyNetworkHp(syncedHp);
         }
 
         /// <summary>

@@ -43,6 +43,8 @@ namespace TPSShooter
                 return;
 
             DisableClientSimulation();
+            if (zombie != null)
+                zombie.ApplyNetworkHp(syncedHp);
         }
 
         /// <summary>

@@ -14,10 +14,13 @@ namespace TPSShooter
 
       public override void OnEnter()
       {
-        host.characterController.enabled = false;
-        host.navmeshAgent.enabled = false;
+        if (host.characterController != null)
+          host.characterController.enabled = false;
+        if (host.navmeshAgent != null)
+          host.navmeshAgent.enabled = false;
 
-        host.animator.SetTrigger(ZombieBehaviour.DeathHash);
+        if (host.animator != null)
+          host.animator.SetTrigger(ZombieBehaviour.DeathHash);
 
         // Event
         host.onDied?.Invoke();
@@ -25,7 +28,7 @@ namespace TPSShooter
 
         // Blood effects are now pooled and auto-despawn via PooledLifetime, no manual Destroy needed
 
-        Destroy(host.gameObject, host.dieTime);
+        host.ScheduleDespawn(host.dieTime);
       }
     }
   }

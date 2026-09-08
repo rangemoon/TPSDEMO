@@ -72,12 +72,15 @@ namespace TPSShooter.UI
         }
 
         /// <summary>
-        /// 本机死亡后先出等待层。加入端注册表可能暂时看不到房主，不能因此不显示。
-        /// 对局结束后由 OnGameFinished 换成胜负。
+        /// 只有本机玩家死亡才出等待层，避免其他玩家死亡时房主也被当成结算。
         /// </summary>
         private void OnLocalPlayerDied()
         {
             if (GameManager.IsGameFinished)
+                return;
+
+            PlayerBehaviour localPlayer = PlayerRegistry.GetLocalPlayer();
+            if (localPlayer == null || localPlayer.IsAlive)
                 return;
 
             if (resultRoot != null)
