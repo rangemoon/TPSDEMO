@@ -100,3 +100,15 @@ Assets/ImageRechannel.meta
 Assets/ImageRechannel/
 /ServerData/
 /CCDBuildData/
+
+# Agent session notes and local diagnose output
+/docs/
+/lan-diagnose.txt
+/grenade-hud-setup-log.txt
+/commit-local.ps1
+
+# One-shot editor helpers; keep MatchOverlay/RoomLobby builders
+/Assets/TPS Shooter (Military style)/Editor/Misc/GrenadeHudPrefabSetup.cs
+/Assets/TPS Shooter (Military style)/Editor/Misc/GrenadeHudPrefabSetup.cs.meta
+/Assets/TPS Shooter (Military style)/Editor/Misc/MissingPrefabCleaner.cs
+/Assets/TPS Shooter (Military style)/Editor/Misc/MissingPrefabCleaner.cs.meta
