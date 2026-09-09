@@ -17,22 +17,24 @@ namespace TPSShooter
 
     private void OnGrenadeStartThrowRequest()
     {
+      if (!isActiveAndEnabled || !IsLocalPlayer) return;
       if (!IsAlive) return;
-      if (grenadeSettings.GrenadePrefab == null) return;
-      if (IsThrowingGrenade) return;
-      if (IsReloading) return;
       if (IsDrivingVehicle) return;
       if (GrenadeCount <= 0)
       {
         Events.PlayerGrenadeDepleted.Call();
         return;
       }
+      if (grenadeSettings.GrenadePrefab == null) return;
+      if (IsThrowingGrenade) return;
+      if (IsReloading) return;
 
       GrenadeStartThrow();
     }
 
     private void OnGrenadeFinishThrowRequest()
     {
+      if (!isActiveAndEnabled || !IsLocalPlayer) return;
       if (IsThrowingGrenade == false) return;
 
       GrenadeFinishThrow();
@@ -92,6 +94,7 @@ namespace TPSShooter
     private void InitializeGrenadeCount()
     {
       GrenadeCount = grenadeSettings.maxGrenadeCount;
+      Events.PlayerGrenadeCountChanged.Call();
     }
 
     public void AddGrenades(int count)

@@ -10,16 +10,34 @@ namespace TPSShooter
   {
     public LineRenderer lineRenderer;
 
+    private PlayerBehaviour ownerPlayer;
     private Coroutine throwCoroutine;
     private const float timeStep = 0.06f;
 
     private void Awake()
     {
-      lineRenderer.useWorldSpace = true;
-      lineRenderer.positionCount = 0;
+      ownerPlayer = GetComponent<PlayerBehaviour>();
+      if (ownerPlayer == null)
+        ownerPlayer = GetComponentInParent<PlayerBehaviour>();
 
+      if (lineRenderer != null)
+      {
+        lineRenderer.useWorldSpace = true;
+        lineRenderer.positionCount = 0;
+      }
+    }
+
+    private void OnEnable()
+    {
       Events.PlayerStartGrenadeThrow += OnPlayerStartGrenadeThrow;
       Events.PlayerFinishGreandeThrow += OnPlayerFinishGreandeThrow;
+    }
+
+    private void OnDisable()
+    {
+      Events.PlayerStartGrenadeThrow -= OnPlayerStartGrenadeThrow;
+      Events.PlayerFinishGreandeThrow -= OnPlayerFinishGreandeThrow;
+      StopThrowPreview();
     }
 
     private void OnDestroy()
@@ -30,21 +48,52 @@ namespace TPSShooter
 
     private void OnPlayerStartGrenadeThrow()
     {
+      // 联机时场景里被关掉的 Player 仍可能曾订阅全局事件；未激活物体不能 StartCoroutine。
+      if (!CanPreview())
+        return;
+
+      StopThrowPreview();
       throwCoroutine = StartCoroutine(UpdateProjectile());
     }
 
     private void OnPlayerFinishGreandeThrow()
     {
-      StopCoroutine(throwCoroutine);
-      lineRenderer.positionCount = 0;
+      StopThrowPreview();
+    }
+
+    private bool CanPreview()
+    {
+      if (!isActiveAndEnabled || lineRenderer == null)
+        return false;
+      if (ownerPlayer == null || !ownerPlayer.IsLocalPlayer)
+        return false;
+      return ownerPlayer.grenadeSettings != null && ownerPlayer.grenadeSettings.GrenadePosition != null;
+    }
+
+    private void StopThrowPreview()
+    {
+      if (throwCoroutine != null)
+      {
+        StopCoroutine(throwCoroutine);
+        throwCoroutine = null;
+      }
+
+      if (lineRenderer != null)
+        lineRenderer.positionCount = 0;
     }
 
     private IEnumerator UpdateProjectile()
     {
       while (true)
       {
-        Vector3 startPoint = PlayerBehaviour.GetInstance().grenadeSettings.GrenadePosition.position;
-        Vector3 velocity = PlayerBehaviour.GetInstance().GetGreandeVelocity();
+        if (!CanPreview())
+        {
+          StopThrowPreview();
+          yield break;
+        }
+
+        Vector3 startPoint = ownerPlayer.grenadeSettings.GrenadePosition.position;
+        Vector3 velocity = ownerPlayer.GetGreandeVelocity();
         Vector3[] positions = CalculateGrenadePositions(startPoint, velocity);
 
         lineRenderer.positionCount = positions.Length;
@@ -60,7 +109,7 @@ namespace TPSShooter
 
       float time = timeStep;
       Vector3 nextPosition = CalculatePositionInTime(startPoint, velocity, time);
-      LayerMask layers = PlayerBehaviour.GetInstance().weaponSettings.shootingLayers;
+      LayerMask layers = ownerPlayer.weaponSettings.shootingLayers;
       RaycastHit hit;
       while (Physics.Linecast(positions[positions.Count - 1], nextPosition, out hit, layers) == false)
       {
