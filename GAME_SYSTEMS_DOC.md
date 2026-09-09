@@ -1,7 +1,7 @@
 # 游戏核心系统文档
 
 > 本文档记录当前分支 (Lynx) 的核心游戏系统实现细节，便于版本回退后快速恢复或参考。
-> 生成日期：2026-08-12
+> 生成日期：2026-08-12；手榴弹与进关流程已于 2026-09-09 按现实现更正。
 
 ---
 
@@ -26,7 +26,10 @@
 | `Scripts/Entities/Player/Behaviour/PlayerBehaviour.Grenade.cs` | 玩家投掷手榴弹的行为逻辑（partial class） |
 | `Scripts/Entities/Player/Behaviour/Settings/PlayerGrenadeSettings.cs` | 手榴弹配置：预制体、挂载点、弹药数 |
 | `Scripts/Entities/Player/Abilitites/PlayerGrenadeProjectile.cs` | 手榴弹投掷弹道预测线（LineRenderer） |
-| `Scripts/UI/Player/Misc/GrenadeOutOfStockUI.cs` | 手榴弹耗尽时弹出的UI（看广告补充弹药） |
+| `Scripts/UI/Player/Misc/GrenadeOutOfStockUI.cs` | 手榴弹耗尽短提示（文案「手榴弹不足」，无广告/确定按钮） |
+| `Scripts/UI/Player/Misc/PlayerGrenadeCount.cs` | HUD 显示 `x` + 当前数量；扔光按 G 时打开耗尽提示 |
+| `Prefabs/UI/GrenadeOutOfStockUI.prefab` | 耗尽短条（无广告按钮） |
+| `Prefabs/UI/Player/PlayerCanvas.prefab` | 准星、弹药、手榴弹数量、耗尽提示 |
 | `Prefabs/Entities/Grenade.prefab` | 手榴弹预制体 |
 | `Prefabs/ThirdParties/Particles/Prefabs/GrenadeExplosionEffect.prefab` | 爆炸粒子特效 |
 
@@ -78,12 +81,15 @@
 ### 1.4 弹药系统
 
 - `PlayerGrenadeSettings.maxGrenadeCount = 3`：初始/最大弹药数
-- `PlayerGrenadeSettings.grenadesPerVideo = 1`：看一次广告补充的弹药数
-- 初始化：`InitializeGrenadeCount()` → `GrenadeCount = maxGrenadeCount`
-- 弹尽时：`Events.PlayerGrenadeDepleted` → 弹出 `GrenadeOutOfStockUI`
-  - 可看广告 (`ShowTrickBoxOrVideo`) 补充弹药
-  - 关闭按钮直接关闭
+- `PlayerGrenadeSettings.grenadesPerVideo` 仍留在设置里，**UI 已不再看广告补弹**
+- 初始化：`InitializeGrenadeCount()` → `GrenadeCount = maxGrenadeCount`，并 `Events.PlayerGrenadeCountChanged`（HUD 才能刷到 3）
+- HUD：`PlayerGrenadeCount` 显示 `x` + 数量，写在 `PlayerCanvas`；若 FullPlayer 上也有弹药 HUD 则同样补一份
+- 弹尽时：`Events.PlayerGrenadeDepleted` → `GrenadeOutOfStockUI` 显示「手榴弹不足」短条
+  - 无看广告按钮、无确定按钮；约 1.5 秒后自动关闭
+  - 第三枚出手后 `IsThrowingGrenade` 仍为 true 时再按 G，也会提示不足
+  - 联机时场景里被关掉的 `Player` 不再响应投掷预览协程
 - 无CD限制，只要弹药充足即可连续投掷
+- 投掷/爆炸联机同步仍可能未做
 
 ### 1.5 关键参数（AbstractGrenade）
 
@@ -122,12 +128,9 @@ public GameObject[] weapons; // 武器GameObject数组，在Inspector中拖入
 - **汉化方式：将武器 GameObject 的 tag 设为中文即可**，如 `"自动步枪"`、等
 - tag 同时也是解锁系统的 key
 
-**解锁逻辑**：
-- 使用 `UnlockManager.IsWeaponUnlocked(weaponTag)` 检查
-- 默认解锁武器：`"自动步枪"`（定义在 `UnlockManager.DefaultUnlockedWeapons`）
-- 未解锁武器显示 `lockOverlay`，隐藏 `playButton`
-- 解锁方式：看激励视频广告 `xh.api.Ad.ShowTrickBoxOrVideo("common_box", ...)`
-- 解锁后调用 `UnlockManager.UnlockWeapon(weaponTag)` 写入 PlayerPrefs
+**解锁逻辑（2026-09-09 现实现）**：
+- 菜单不再锁武器，`weapons` 数组里每一把都可以选
+- `UnlockManager` / 看广告解锁仍可能留在工程里，但菜单选武器页已不再走锁闭流程
 
 **武器切换**：
 - `OnNext()` / `OnPrevious()`：循环切换 `weaponIndex`
@@ -141,7 +144,8 @@ public GameObject[] weapons; // 武器GameObject数组，在Inspector中拖入
   → OnPlay() → Events.RequestMenuWeapon
     → WeaponChoose (菜单版) 显示
       → 选择武器 → OnPlay() → Events.RequestMenuLocation
-        → LocationChoose 显示
+        → RoomLobby 显示（创建房间 / 加入房间）
+        → 若大厅不在场，才回退弹出旧 LocationChoose
 ```
 
 ### 2.3 游戏内武器切换（HUD）
@@ -178,7 +182,8 @@ PlayerPrefs.SetInt("AutoShot", 0/1)             // 是否自动射击
 
 ### 3.1 核心文件
 
-`Scripts/UI/Menu/LocationChoose.cs` (namespace: `TPSShooter.UI.Menu`)
+正式入口：`Scripts/UI/Menu/RoomLobby.cs`（选完武器后的大厅）。  
+旧页：`Scripts/UI/Menu/LocationChoose.cs`（大厅在场时不再弹出）。
 
 ### 3.2 数据结构
 
@@ -207,26 +212,21 @@ public LocationInfo[] locations; // 在 Inspector 中配置
 - `locationInfoText.text = locations[locationIndex].info`
 - **直接在 Inspector 的 `LocationInfo.info` 字段填写中文名称即可**
 
-### 3.5 页面流程
+### 3.5 页面流程（2026-09-09 现实现）
 
 ```
-LocationChoose
-  → OnPlay():
-      1. 检查解锁
-      2. Events.RequestMenuDownloading.Call(sceneIndex)
-      3. Hide()
-      4. xh.api.Ad.ShowInsert("common")
+WeaponChoose.OnPlay
+  → Events.RequestMenuLocation
+    → RoomLobby.Show（创建 / 加入）
+      → 创建：选地图 → GameNetworkManager.StartHostAtScene(sceneIndex)
+      → 加入：搜索或填 IP → NetworkClient 连接 Host
 
-  → Downloading.cs:
-      → OnRequestMenuDownloading(int sceneIndex)
-        → Show 下载UI（模拟进度条动画）
-        → StartCoroutine(LoadScene(sceneIndex))
-          → SceneManager.LoadSceneAsync(sceneIndex)
-
-  → OnBack():
-      → Events.RequestMenuWeapon
-      → 返回武器选择
+旧 LocationChoose（仅大厅不在场时）：
+  → OnPlay() 直接 OnHostPlay() → StartHostAtScene
+  → 不再走 Downloading / LoadSceneAsync 单机进关
 ```
+
+不要再按「看广告解锁地图 + Downloading 进关」实现。一人开房也是 Listen Server。
 
 ---
 
@@ -385,42 +385,51 @@ EnemyGenerator:
 
 ### 5.3 失败条件
 
-**玩家死亡 = 失败**
+**所有存活玩家死完才失败**（联机多人）：`PlayerRegistry.HasAlivePlayer()` 为 false。单人死亡不等于立刻失败。
 
 ```
-PlayerBehaviour 死亡时:
-  → Events.PlayerDied.Call()
-
-GameManager:
-  OnPlayerDied():
-    → if (!IsGameFinished) FinishGame(false)  // isWin = false
+任意玩家死亡:
+  → Events.AnyPlayerDied
+  → GameManager.ScheduleEvaluate
+    → 下一帧若无存活玩家 → FinishGame(false)
 ```
+
+加入端中途死亡、对局未结束：结算层显示「等待其他玩家结束游戏」。全员结束后改成「等待房主结束游戏」。
 
 ### 5.4 游戏结算流程
 
 ```
-GameManager.FinishGame(bool isWin):
+GameManager.FinishGame / ApplyFinished(bool isWin):
   1. IsGameFinished = true
-  2. Events.GameFinished.Call()           // 通知所有UI隐藏/停止
-  3. Events.GameFinishedResult.Call(isWin) // 传递胜负结果
-  4. xh.api.Ad.ShowInsert("settle")       // 结算页弹出插屏广告
+  2. 仅离线把 Time.timeScale = 0（联机不要冻时间）
+  3. Events.GameFinished
+  4. Events.GameFinishedResult(isWin)
+  5. MatchOverlayUI（场景级 prefab，不在角色 Canvas 下）
+     - 房主/离线：胜利或失败 → 约 2 秒 →「重新开始」「返回主页」
+     - 加入端：只显示「等待房主结束游戏」，无按钮
 ```
+
+不要依赖插屏广告结算。结算按钮延迟必须用 `WaitForSecondsRealtime`。
 
 ### 5.5 结算后操作
 
 ```
 重玩 (Events.GameReplayRequested):
   → GameManager.Replay()
+    → IsClientOnly 直接 return（不发网络消息）
     → Time.timeScale = 1
-    → Events.GameReplay
-    → SceneManager.LoadSceneAsync(当前场景) // 重新加载当前关卡
+    → CancelEvaluate
+    → 若 Host：ReplayCurrentScene（先 RemovePlayer 再 ServerChangeScene 同一关）
+    → 若纯离线：LoadSceneAsync 当前关
 
 返回主页 (Events.GameLoadHomeSceneRequested):
   → GameManager.LoadHomeScene()
-    → Time.timeScale = 1
-    → Events.GameLoadHomeScene
-    → SceneManager.LoadSceneAsync(0) // 加载场景0（主菜单）
+    → IsClientOnly 直接 return
+    → 若联机：GameNetworkManager.ReturnToMenu()
+    → 若纯离线：LoadSceneAsync(0)
 ```
+
+服务器忽略加入端发来的重开/回菜单消息。
 
 ### 5.6 游戏事件定义 (Events.Game.cs)
 
@@ -439,13 +448,12 @@ public static Event SceneUnload;
 
 ```
 Events.GamePauseRequested → PauseGame()
-  → Time.timeScale = 0
-  → IsGamePaused = true
+  → 离线才 Time.timeScale = 0
+  → 联机由 Host 广播，不要冻时间
   → Events.GamePaused.Call()
 
 Events.GameResumeRequested → ResumeGame()
   → Time.timeScale = 1
-  → IsGamePaused = false
   → Events.GameResumed.Call()
 ```
 
@@ -456,16 +464,15 @@ Events.GameResumeRequested → ResumeGame()
 ```
 启动游戏
   → 场景0 (主菜单)
-    → Menu.cs (主菜单UI)
-      → OnPlay() → WeaponChoose.cs (武器选择)
-        → 选武器(循环切换) → 解锁/锁定
-        → OnPlay() → LocationChoose.cs (地图选择)
-          → 选地图(循环切换) → 解锁/锁定
-          → OnPlay() → Downloading.cs (加载UI)
-            → LoadScene(sceneIndex)
-              → 进入游戏场景
-                → EnemyGenerator 控制波次
-                → 消灭所有敌人 → Events.GameWon → 结算
-                → 玩家死亡 → Events.PlayerDied → 结算
-                  → 重玩 / 返回主页
+    → Menu.cs
+      → OnPlay() → WeaponChoose.cs（武器全部可选）
+        → OnPlay() → RoomLobby（创建房间 / 加入房间）
+          → 创建：StartHostAtScene(选中地图)
+          → 加入：搜索或填 IP
+            → 进入游戏场景（Listen Server）
+              → EnemyGenerator 仅 Host 刷怪
+              → 消灭所有敌人 → 胜利结算
+              → 全员死亡 → 失败结算
+                → 仅房主：重开 / 返回主页
+                → 加入端：等待房主结束游戏
 ```

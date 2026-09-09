@@ -1,114 +1,139 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 using LightDev;
 using LightDev.UI;
 
 namespace TPSShooter.UI
 {
+    /// <summary>
+    /// 手榴弹用尽时的短提示，无按钮、不看广告。物体放在 PlayerCanvas 预制体上。
+    /// </summary>
     public class GrenadeOutOfStockUI : CanvasElement
     {
+        private const string HintMessage = "手榴弹不足";
+        private const float HintDuration = 1.5f;
+        private const float FadeInDuration = 0.12f;
+        private const float FadeOutDuration = 0.18f;
+
         [Header("UI References")]
-        public Button watchVideoButton;
-        public Button closeButton;
+        public CanvasGroup canvasGroup;
+        public TMP_Text hintLabel;
 
-        [Header("Input Panels")]
-        public GameObject[] inputPanels;
-
-        private bool isShowingAd;
-        private bool _inputPanelsHidden;
+        private Coroutine hintRoutine;
 
         public override void Subscribe()
         {
             base.Subscribe();
 
-            Events.PlayerGrenadeDepleted += Show;
+            Events.PlayerGrenadeDepleted += ShowHint;
             Events.GamePaused += Hide;
             Events.GameResumed += Hide;
             Events.GameFinished += Hide;
             Events.GameReplay += Hide;
             Events.PlayerDied += Hide;
+        }
 
-            if (watchVideoButton != null)
-                watchVideoButton.onClick.AddListener(OnWatchVideo);
-
-            if (closeButton != null)
-                closeButton.onClick.AddListener(OnClose);
+        public override void ShowForLateSpawn()
+        {
         }
 
         public override void Unsubscribe()
         {
             base.Unsubscribe();
 
-            Events.PlayerGrenadeDepleted -= Show;
+            Events.PlayerGrenadeDepleted -= ShowHint;
             Events.GamePaused -= Hide;
             Events.GameResumed -= Hide;
             Events.GameFinished -= Hide;
             Events.GameReplay -= Hide;
             Events.PlayerDied -= Hide;
-
-            if (watchVideoButton != null)
-                watchVideoButton.onClick.RemoveListener(OnWatchVideo);
-
-            if (closeButton != null)
-                closeButton.onClick.RemoveListener(OnClose);
         }
 
-        public void OnWatchVideo()
+        public void ShowHint()
         {
-            if (isShowingAd) return;
-
-            // isShowingAd = true;
-            // xh.api.Ad.ShowTrickBoxOrVideo("common_box", () => {
-            //     PlayerBehaviour.GetInstance().AddGrenades(
-            //         PlayerBehaviour.GetInstance().grenadeSettings.grenadesPerVideo);
-            //     isShowingAd = false;
-            //     Hide();
-            // }, () => {
-            //     isShowingAd = false;
-            //     Hide();
-            // });
-            PlayerBehaviour.GetInstance().AddGrenades(
-            PlayerBehaviour.GetInstance().grenadeSettings.grenadesPerVideo);
-            Hide();
+            PrepareVisual();
+            Show();
         }
 
-        public void OnClose()
+        public void HideHint()
         {
-            Hide();
+            if (gameObject.activeInHierarchy)
+                InstantHide();
         }
 
-        /// <summary>
-        /// 面板显示时隐藏 Input 面板，防止玩家误触操作。
-        /// </summary>
         protected override void OnStartShowing()
         {
-            _inputPanelsHidden = false;
+            PrepareVisual();
 
-            foreach (GameObject panel in inputPanels)
+            if (canvasGroup != null)
             {
-                if (panel != null && panel.activeSelf)
-                {
-                    panel.SetActive(false);
-                    _inputPanelsHidden = true;
-                }
+                canvasGroup.alpha = 0f;
+                canvasGroup.blocksRaycasts = false;
+                canvasGroup.interactable = false;
             }
+
+            StopHintHide();
+            hintRoutine = StartCoroutine(HideHintAfterDelay());
         }
 
-        /// <summary>
-        /// 面板隐藏时恢复 Input 面板显示。
-        /// </summary>
-        protected override void OnFinishHiding()
+        protected override void OnStartHiding()
         {
-            if (!_inputPanelsHidden) return;
+            StopHintHide();
+        }
 
-            foreach (GameObject panel in inputPanels)
+        private void PrepareVisual()
+        {
+            Button[] buttons = GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
             {
-                if (panel != null)
-                {
-                    panel.SetActive(true);
-                }
+                if (buttons[i] != null)
+                    buttons[i].gameObject.SetActive(false);
             }
+
+            if (hintLabel != null)
+                hintLabel.text = HintMessage;
+        }
+
+        private IEnumerator HideHintAfterDelay()
+        {
+            yield return FadeTo(1f, FadeInDuration);
+            yield return new WaitForSecondsRealtime(HintDuration);
+            yield return FadeTo(0f, FadeOutDuration);
+            hintRoutine = null;
+            Hide();
+        }
+
+        private IEnumerator FadeTo(float target, float duration)
+        {
+            if (canvasGroup == null || duration <= 0f)
+            {
+                if (canvasGroup != null)
+                    canvasGroup.alpha = target;
+                yield break;
+            }
+
+            float start = canvasGroup.alpha;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                canvasGroup.alpha = Mathf.Lerp(start, target, elapsed / duration);
+                yield return null;
+            }
+
+            canvasGroup.alpha = target;
+        }
+
+        private void StopHintHide()
+        {
+            if (hintRoutine == null)
+                return;
+
+            StopCoroutine(hintRoutine);
+            hintRoutine = null;
         }
     }
 }
