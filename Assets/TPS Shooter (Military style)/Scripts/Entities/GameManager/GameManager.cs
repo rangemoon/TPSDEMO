@@ -277,15 +277,12 @@ namespace TPSShooter
 
         private void Replay()
         {
+            if (GameNetwork.IsClientOnly)
+                return;
+
             Time.timeScale = 1;
             Events.GameReplay.Call();
             CancelEvaluate();
-
-            if (GameNetwork.IsClientOnly)
-            {
-                NetworkClient.Send(new GameReplayRequestMessage());
-                return;
-            }
 
             if (GameNetwork.IsServer)
             {
@@ -311,14 +308,11 @@ namespace TPSShooter
 
         private void LoadHomeScene()
         {
+            if (GameNetwork.IsClientOnly)
+                return;
+
             Time.timeScale = 1f;
             Events.GameLoadHomeScene.Call();
-
-            if (GameNetwork.IsClientOnly)
-            {
-                NetworkClient.Send(new GameLoadHomeRequestMessage());
-                return;
-            }
 
             if (GameNetwork.IsActive)
             {

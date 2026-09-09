@@ -39,11 +39,17 @@ namespace TPSShooter.UI
 
     public void OnReplay()
     {
+      if (GameNetwork.IsClientOnly)
+        return;
+
       Events.GameReplayRequested.Call();
     }
 
     public void OnLoadHome()
     {
+      if (GameNetwork.IsClientOnly)
+        return;
+
       Events.GameLoadHomeSceneRequested.Call();
     }
   }

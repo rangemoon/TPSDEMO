@@ -428,23 +428,21 @@ namespace TPSShooter
         }
 
         /// <summary>
-        /// 处理客户端重开请求。
+        /// 忽略加入端的重开请求，只有房主本机可以重开。
         /// </summary>
         /// <param name="conn">发起请求的连接。</param>
         /// <param name="message">重开请求消息。</param>
         private void OnServerReplayRequested(NetworkConnectionToClient conn, GameReplayRequestMessage message)
         {
-            EventsProxy.RequestReplay();
         }
 
         /// <summary>
-        /// 处理客户端返回菜单请求。
+        /// 忽略加入端的回菜单请求，只有房主本机可以返回主页。
         /// </summary>
         /// <param name="conn">发起请求的连接。</param>
         /// <param name="message">返回菜单请求消息。</param>
         private void OnServerLoadHomeRequested(NetworkConnectionToClient conn, GameLoadHomeRequestMessage message)
         {
-            EventsProxy.RequestLoadHome();
         }
 
         /// <summary>

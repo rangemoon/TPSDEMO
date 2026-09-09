@@ -12,7 +12,8 @@ namespace TPSShooter.UI
     /// </summary>
     public class MatchOverlayUI : MonoBehaviour
     {
-        private const string WaitMessage = "等待其他玩家结束游戏";
+        private const string WaitOthersMessage = "等待其他玩家结束游戏";
+        private const string WaitHostMessage = "等待房主结束游戏";
         private const float ResultButtonDelay = 2f;
 
         [Header("Wait")]
@@ -31,9 +32,7 @@ namespace TPSShooter.UI
 
         private void Awake()
         {
-            if (waitLabel != null && string.IsNullOrEmpty(waitLabel.text))
-                waitLabel.text = WaitMessage;
-
+            SetWaitLabel(WaitOthersMessage);
             HideAll();
         }
 
@@ -88,11 +87,29 @@ namespace TPSShooter.UI
             if (resultRoot != null)
                 resultRoot.SetActive(false);
             if (waitRoot != null)
+            {
+                SetWaitLabel(WaitOthersMessage);
                 waitRoot.SetActive(true);
+            }
         }
 
         private void OnGameFinished(bool isWin)
         {
+            // 加入端不能重开或回主页，只提示等房主处理
+            if (GameNetwork.IsClientOnly)
+            {
+                if (resultRoot != null)
+                    resultRoot.SetActive(false);
+                if (continueRoot != null)
+                    continueRoot.SetActive(false);
+                if (waitRoot != null)
+                {
+                    SetWaitLabel(WaitHostMessage);
+                    waitRoot.SetActive(true);
+                }
+                return;
+            }
+
             if (waitRoot != null)
                 waitRoot.SetActive(false);
 
@@ -105,6 +122,12 @@ namespace TPSShooter.UI
                 continueRoot.SetActive(false);
 
             RestartContinueDelay();
+        }
+
+        private void SetWaitLabel(string message)
+        {
+            if (waitLabel != null)
+                waitLabel.text = message;
         }
 
         /// <summary>
@@ -144,11 +167,17 @@ namespace TPSShooter.UI
 
         private void OnReplay()
         {
+            if (GameNetwork.IsClientOnly)
+                return;
+
             Events.GameReplayRequested.Call();
         }
 
         private void OnHome()
         {
+            if (GameNetwork.IsClientOnly)
+                return;
+
             Events.GameLoadHomeSceneRequested.Call();
         }
     }
