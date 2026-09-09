@@ -1,3 +1,4 @@
+using System.Collections;
 using LightDev;
 using TMPro;
 using UnityEngine;
@@ -26,6 +27,7 @@ namespace TPSShooter.UI
         public Button homeButton;
 
         private bool subscribed;
+        private Coroutine continueRoutine;
 
         private void Awake()
         {
@@ -102,19 +104,38 @@ namespace TPSShooter.UI
             if (continueRoot != null)
                 continueRoot.SetActive(false);
 
-            CancelInvoke(nameof(ShowContinueButtons));
-            Invoke(nameof(ShowContinueButtons), ResultButtonDelay);
+            RestartContinueDelay();
         }
 
-        private void ShowContinueButtons()
+        /// <summary>
+        /// 结算后冻结 timeScale 时，Invoke 不会到时；用实时等待才能出现重开按钮。
+        /// </summary>
+        private void RestartContinueDelay()
         {
+            StopContinueDelay();
+            continueRoutine = StartCoroutine(ShowContinueButtonsDelayed());
+        }
+
+        private IEnumerator ShowContinueButtonsDelayed()
+        {
+            yield return new WaitForSecondsRealtime(ResultButtonDelay);
+            continueRoutine = null;
             if (continueRoot != null)
                 continueRoot.SetActive(true);
         }
 
+        private void StopContinueDelay()
+        {
+            if (continueRoutine == null)
+                return;
+
+            StopCoroutine(continueRoutine);
+            continueRoutine = null;
+        }
+
         private void HideAll()
         {
-            CancelInvoke(nameof(ShowContinueButtons));
+            StopContinueDelay();
             if (waitRoot != null)
                 waitRoot.SetActive(false);
             if (resultRoot != null)

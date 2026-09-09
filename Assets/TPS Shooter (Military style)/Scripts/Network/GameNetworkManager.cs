@@ -359,14 +359,52 @@ namespace TPSShooter
         }
 
         /// <summary>
+        /// 切场景前清掉对象池。Host 走 OnServerChangeScene，纯客户端走 OnClientChangeScene。
+        /// </summary>
+        public override void OnServerChangeScene(string newSceneName)
+        {
+            CleanupTransientState();
+            base.OnServerChangeScene(newSceneName);
+        }
+
+        /// <summary>
+        /// 纯客户端在开始加载 Host 指定场景前清掉上一局残留。
+        /// </summary>
+        public override void OnClientChangeScene(string newSceneName, SceneOperation sceneOperation, bool customHandling)
+        {
+            if (!NetworkServer.active)
+                CleanupTransientState();
+
+            base.OnClientChangeScene(newSceneName, sceneOperation, customHandling);
+        }
+
+        /// <summary>
         /// Host 重开当前联机关卡，所有客户端跟随切场景。
+        /// 必须先摘掉上一局玩家，再加载同一场景；否则 conn.identity 仍占着，AddPlayer 失败，角色不会重生。
         /// </summary>
         public static void ReplayCurrentScene()
         {
             if (!NetworkServer.active || NetworkManager.singleton == null)
                 return;
 
+            if (NetworkServer.isLoadingScene)
+                return;
+
+            foreach (NetworkConnectionToClient conn in NetworkServer.connections.Values)
+            {
+                if (conn == null || conn.identity == null)
+                    continue;
+
+                NetworkServer.RemovePlayerForConnection(conn, RemovePlayerOptions.Destroy);
+            }
+
             NetworkManager.singleton.ServerChangeScene(SceneManager.GetActiveScene().name);
+        }
+
+        private static void CleanupTransientState()
+        {
+            GamePool.ClearAll();
+            LightDev.Events.SceneUnload.Call();
         }
 
         /// <summary>

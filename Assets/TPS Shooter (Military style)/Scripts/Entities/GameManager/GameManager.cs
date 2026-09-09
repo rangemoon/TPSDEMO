@@ -279,6 +279,7 @@ namespace TPSShooter
         {
             Time.timeScale = 1;
             Events.GameReplay.Call();
+            CancelEvaluate();
 
             if (GameNetwork.IsClientOnly)
             {
@@ -289,10 +290,23 @@ namespace TPSShooter
             if (GameNetwork.IsServer)
             {
                 GameNetworkManager.ReplayCurrentScene();
+                // RemovePlayer 会触发 Unregister → ScheduleEvaluate，必须再取消，否则下一帧会按“全灭”结算
+                CancelEvaluate();
                 return;
             }
 
             StartCoroutine(LoadScene(SceneManager.GetActiveScene().buildIndex));
+        }
+
+        private void CancelEvaluate()
+        {
+            if (evaluateCoroutine != null)
+            {
+                StopCoroutine(evaluateCoroutine);
+                evaluateCoroutine = null;
+            }
+
+            evaluateScheduled = false;
         }
 
         private void LoadHomeScene()
