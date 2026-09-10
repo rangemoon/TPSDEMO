@@ -18,7 +18,7 @@ namespace TPSShooter
 
       public override void OnEnter()
       {
-        host.navmeshAgent.speed = MaxWalkSpeed;
+        host.pathAgent.speed = MaxWalkSpeed;
 
         UpdateDestination(destinationIndex);
         Move();
@@ -32,7 +32,7 @@ namespace TPSShooter
 
       public override void OnUpdate()
       {
-        host.LookAtLerp(host.navmeshAgent.steeringTarget);
+        host.LookAtLerp(host.pathAgent.steeringTarget);
 
         if(host.CanChangeStateToAttack())
         {
@@ -59,7 +59,7 @@ namespace TPSShooter
 
       private bool IsNearDestination()
       {
-        return Vector3.Distance(host.navmeshAgent.destination, host.GetPosition()) < MinStopDistance;
+        return Vector3.Distance(host.pathAgent.destination, host.GetPosition()) < MinStopDistance;
       }
 
       private void Stop()
@@ -84,7 +84,7 @@ namespace TPSShooter
 
       private void UpdateDestination(int index)
       {
-        host.navmeshAgent.SetDestination(host.waypoints[index].Destination.position);
+        host.pathAgent.SetDestination(host.waypoints[index].Destination.position);
       }
     }
   }

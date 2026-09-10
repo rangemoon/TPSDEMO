@@ -94,10 +94,14 @@ namespace TPSShooter
         }
 
         /// <summary>
-        /// 客户端关闭 NavMesh 与 CharacterController，位置交给 NetworkTransform。
+        /// 客户端关闭 A* 寻路与 CharacterController，位置交给 NetworkTransform。
         /// </summary>
         private void DisableClientSimulation()
         {
+            PathAgent pathAgent = GetComponent<PathAgent>();
+            if (pathAgent != null)
+                pathAgent.enabled = false;
+
             NavMeshAgent agent = GetComponent<NavMeshAgent>();
             if (agent != null)
                 agent.enabled = false;

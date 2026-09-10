@@ -15,8 +15,8 @@ namespace TPSShooter
 
       public override void OnEnter()
       {
-        host.navmeshAgent.speed = MaxRunSpeed;
-        host.navmeshAgent.acceleration = MaxRunAcceleration;
+        host.pathAgent.speed = MaxRunSpeed;
+        host.pathAgent.acceleration = MaxRunAcceleration;
         host.SetForwardAnimatorParameter(1);
         host.SetStrafeAnimatorParameter(0);
         host.ResumeNavMeshAgent();
@@ -25,7 +25,7 @@ namespace TPSShooter
 
       public override void OnUpdate()
       {
-        host.LookAtLerp(host.navmeshAgent.steeringTarget);
+        host.LookAtLerp(host.pathAgent.steeringTarget);
 
         if (host.CanChangeStateToAttack())
         {
@@ -49,7 +49,7 @@ namespace TPSShooter
       private void UpdateDestination()
       {
         if (host.player != null)
-          host.navmeshAgent.destination = host.player.GetPosition();
+          host.pathAgent.destination = host.player.GetPosition();
       }
     }
   }

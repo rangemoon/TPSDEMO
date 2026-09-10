@@ -16,8 +16,8 @@ namespace TPSShooter
       {
         if (host.characterController != null)
           host.characterController.enabled = false;
-        if (host.navmeshAgent != null)
-          host.navmeshAgent.enabled = false;
+        if (host.pathAgent != null)
+          host.pathAgent.enabled = false;
 
         if (host.animator != null)
           host.animator.SetTrigger(ZombieBehaviour.DeathHash);

@@ -81,6 +81,23 @@ namespace TPSShooter
       RoomLobbyPrefabBuilder.SetupInMenuScene();
     }
 
+    [MenuItem("TPS Shooter/Add to scene/Pathfinding Grid", false, 27)]
+    private static void AddPathfindingGridToScene()
+    {
+      PathfindingGrid existing = UnityEngine.Object.FindFirstObjectByType<PathfindingGrid>();
+      if (existing != null)
+      {
+        Selection.activeGameObject = existing.gameObject;
+        Debug.Log("场景里已有 PathfindingGrid，已选中。");
+        return;
+      }
+
+      GameObject owner = new GameObject("PathfindingGrid");
+      owner.AddComponent<PathfindingGrid>();
+      Undo.RegisterCreatedObjectUndo(owner, "Add Pathfinding Grid");
+      Selection.activeGameObject = owner;
+    }
+
     [MenuItem("TPS Shooter/Clear Saved Data (PlayerPrefs)", false, 500)]
     private static void ClearAllData()
     {

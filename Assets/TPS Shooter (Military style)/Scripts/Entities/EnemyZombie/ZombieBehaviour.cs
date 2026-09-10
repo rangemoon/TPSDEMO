@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using UnityEngine.AI;
 using UnityEngine;
 
 using LightDev;
@@ -9,7 +8,7 @@ using DG.Tweening;
 
 namespace TPSShooter
 {
-  [RequireComponent(typeof(NavMeshAgent))]
+  [RequireComponent(typeof(PathAgent))]
   [RequireComponent(typeof(CharacterController))]
   [RequireComponent(typeof(Animator))]
   public partial class ZombieBehaviour : Base
@@ -37,7 +36,7 @@ namespace TPSShooter
 
     private CharacterController characterController;
     private Animator animator;
-    private NavMeshAgent navmeshAgent;
+    private PathAgent pathAgent;
     private PlayerBehaviour player;
 
     private ZombieBehaviourState currentState;
@@ -375,11 +374,13 @@ namespace TPSShooter
 
       animator = GetComponent<Animator>();
       characterController = GetComponent<CharacterController>();
-      navmeshAgent = GetComponent<NavMeshAgent>();
+      pathAgent = GetComponent<PathAgent>();
+      if (pathAgent == null)
+        pathAgent = gameObject.AddComponent<PathAgent>();
       if (animator != null)
         animator.applyRootMotion = false;
-      if (navmeshAgent != null)
-        navmeshAgent.autoBraking = false;
+      if (pathAgent != null)
+        pathAgent.autoBraking = false;
     }
 
     private void InitializeStartState()
@@ -426,12 +427,14 @@ namespace TPSShooter
 
     private void StopNavMeshAgent()
     {
-      NavMeshAgentUtil.StopIfReady(navmeshAgent);
+      if (pathAgent != null)
+        pathAgent.StopIfReady();
     }
 
     private void ResumeNavMeshAgent()
     {
-      NavMeshAgentUtil.ResumeIfReady(navmeshAgent);
+      if (pathAgent != null)
+        pathAgent.ResumeIfReady();
     }
 
     private float GetDistanceToPlayer()

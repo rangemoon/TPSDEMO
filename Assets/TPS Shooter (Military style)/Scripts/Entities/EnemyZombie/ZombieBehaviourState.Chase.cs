@@ -12,7 +12,7 @@ namespace TPSShooter
 
       public override void OnEnter()
       {
-        host.navmeshAgent.speed = MaxRunSpeed;
+        host.pathAgent.speed = MaxRunSpeed;
         host.animator.SetBool(ZombieBehaviour.RunHash, true);
         host.ResumeNavMeshAgent();
         UpdateDestination();
@@ -25,7 +25,7 @@ namespace TPSShooter
 
       public override void OnUpdate()
       {
-        host.LookAtLerp(host.navmeshAgent.steeringTarget);
+        host.LookAtLerp(host.pathAgent.steeringTarget);
 
         if(host.CanChangeStateToAttack())
         {
@@ -49,7 +49,7 @@ namespace TPSShooter
       private void UpdateDestination()
       {
         if (host.player != null)
-          host.navmeshAgent.destination = host.player.GetPosition();
+          host.pathAgent.destination = host.player.GetPosition();
       }
     }
   }
