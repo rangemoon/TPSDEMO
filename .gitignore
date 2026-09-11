@@ -103,6 +103,7 @@ Assets/ImageRechannel/
 
 # Agent session notes and local diagnose output
 /docs/
+/doc/
 /lan-diagnose.txt
 /grenade-hud-setup-log.txt
 /commit-local.ps1
